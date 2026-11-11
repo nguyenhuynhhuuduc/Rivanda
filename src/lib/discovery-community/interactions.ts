@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
-import type { PoolConnection, RowDataPacket } from "mysql2/promise";
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from "mysql2/promise";
+import { enqueueDiscoveryNotice } from "../notifications";
 import { CommunityError, idOf, revisionOf, textOf, type Actor } from "./model";
 import { checkPublic, lockActor, lockPost, quota, transaction } from "./db";
 
@@ -10,7 +11,7 @@ export async function setPostFlag(actor:Actor, postId:string, kind:unknown, enab
     const user=await lockActor(tx,actor);await quota(tx,user,"interaction");
     const post=await lockPost(tx,postId);checkPublic(post);
     const table=kind==="like"?"community_likes":"community_saves";
-    if(enabled)await tx.query(`INSERT IGNORE INTO ${table}(user_id,post_id) VALUES(?,?)`,[user.id,post.id]);
+    if(enabled){const [result]=await tx.query<ResultSetHeader>(`INSERT IGNORE INTO ${table}(user_id,post_id) VALUES(?,?)`,[user.id,post.id]);if(kind==="like"&&result.affectedRows===1)await enqueueDiscoveryNotice(tx,{kind:"like",actorId:user.id,recipientId:post.author_id,postId:post.id});}
     else await tx.query(`DELETE FROM ${table} WHERE user_id=? AND post_id=?`,[user.id,post.id]);
     const [[counts]]=await tx.query<RowDataPacket[]>(`SELECT (SELECT COUNT(*) FROM community_likes WHERE post_id=?) AS likes,(SELECT COUNT(*) FROM community_saves WHERE post_id=?) AS saves`,[post.id,post.id]);
     return {postId:post.id as string,authorId:post.author_id,likes:Number(counts.likes),saves:Number(counts.saves)};
@@ -34,8 +35,11 @@ export async function addComment(actor:Actor,postId:string,rawBody:unknown,paren
     const [existing]=await tx.query<RowDataPacket[]>("SELECT id,post_id,parent_id,body FROM community_comments WHERE user_id=? AND request_id=?",[user.id,requestId]);
     if(existing[0]){const e=existing[0];if(e.post_id!==post.id||e.parent_id!==parentId||e.body!==body)throw new CommunityError("Yêu cầu đã được sử dụng. Hãy tải lại form.");return{postId,authorId:post.author_id,commentId:e.id as string};}
     await quota(tx,user,"comment");
-    if(parentId){const parent=await lockComment(tx,parentId,postId);if(parent.parent_id!==null||parent.depth!==1||parent.status!=="visible"||parent.moderation_hold)throw new CommunityError("Chỉ trả lời bình luận cấp một đang hiển thị; tối đa hai cấp.");}
+    const parent=parentId?await lockComment(tx,parentId,postId):null;
+    if(parent&&(parent.parent_id!==null||parent.depth!==1||parent.status!=="visible"||parent.moderation_hold))throw new CommunityError("Chỉ trả lời bình luận cấp một đang hiển thị; tối đa hai cấp.");
     const id=randomUUID();await tx.query("INSERT INTO community_comments(id,post_id,parent_id,depth,user_id,body,request_id) VALUES(?,?,?,?,?,?,?)",[id,postId,parentId,parentId?2:1,user.id,body,requestId]);
+    if(parent)await enqueueDiscoveryNotice(tx,{kind:"reply",actorId:user.id,recipientId:parent.user_id,postId,commentId:id});
+    if(!parent||parent.user_id!==post.author_id)await enqueueDiscoveryNotice(tx,{kind:"comment",actorId:user.id,recipientId:post.author_id,postId,commentId:id});
     return{postId,authorId:post.author_id,commentId:id};
   });
 }

@@ -1,28 +1,15 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { formatDate } from "@/lib/format";
-import { listNotifications, markAllRead } from "@/lib/notifications";
-
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Thông báo" };
-
-export default async function NotificationsPage() {
-  const user = await requireUser("/account/notifications");
-  const list = await listNotifications(user.id);
-  await markAllRead(user.id); // mở trang là coi như đã đọc
-  return (
-    <div>
-      <h2 className="font-display text-2xl font-bold">Thông báo</h2>
-      {list.length === 0 ? <p className="mt-6 text-muted">Chưa có thông báo nào.</p> : (
-        <ul className="mt-6 divide-y divide-line">
-          {list.map((n) => (
-            <li key={n.id} className={`py-4 ${n.isRead ? "text-muted" : ""}`}>
-              {n.link ? <Link href={n.link} className="hover:text-link">{n.message}</Link> : <span>{n.message}</span>}
-              <p className="mt-1 text-xs text-muted">{formatDate(n.createdAt)}{!n.isRead && " · mới"}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+import { notificationPage } from "@/lib/notifications";
+import { CommunityError } from "@/lib/discovery-community/model";
+import { DiscoveryIcon } from "@/components/discovery-community/DiscoveryUI";
+import { ReadNotification, RefreshNotifications } from "@/components/discovery-community/NotificationControls";
+import styles from "@/components/discovery-community/Notifications.module.css";
+export const dynamic="force-dynamic";
+export const metadata={title:"Thông báo",robots:{index:false,follow:false}};
+export default async function NotificationsPage({searchParams}:{searchParams:Promise<{cursor?:string}>}){
+  const user=await requireUser("/account/notifications"),{cursor}=await searchParams;
+  let data:Awaited<ReturnType<typeof notificationPage>>|null=null,error="";
+  try{data=await notificationPage(user.id,cursor);}catch(e){error=e instanceof CommunityError?e.message:"Chưa tải được thông báo. Vui lòng thử lại.";}
+  return <section className={styles.page} aria-label="Thông báo của bạn"><header className={styles.header}><div><p className={styles.eyebrow}>Discovery · Kết nối</p><h2 className={`${styles.title} font-display`}>Thông báo của bạn</h2><p className={styles.subtitle}>Những tương tác mới, những cuộc trò chuyện đang tiếp nối.{data&&<span className="block">{data.unread} thông báo chưa đọc.</span>}</p></div></header><div className={styles.tools}><RefreshNotifications/>{!!data?.unread&&<ReadNotification/>}</div>{error&&<p role="alert" className={styles.notice}>{error} <Link className="text-link underline" href="/account/notifications">Về trang đầu</Link></p>}{data&&!data.ready&&<p role="status" className={styles.notice}>Thông báo tương tác Discovery chưa được kích hoạt trên môi trường này. Các thông báo hiện có vẫn được giữ.</p>}{data&&<>{data.items.length?<ul className={styles.list}>{data.items.map(n=><li key={n.id} className={`${styles.item} ${!n.isRead?styles.unread:""}`}><span className={styles.icon} aria-hidden="true"><DiscoveryIcon name={n.type.includes("follow")?"people":"feed"}/></span><div className={styles.body}>{n.link?<Link className={styles.message} href={n.link}>{n.message}</Link>:<p className={styles.message}>{n.message}</p>}<p className={styles.meta}><time dateTime={new Date(n.createdAt).toISOString()}>{new Date(n.createdAt).toLocaleString("vi-VN",{timeZone:"Asia/Ho_Chi_Minh",dateStyle:"medium",timeStyle:"short"})}</time> · {n.isRead?"Đã đọc":<span className={styles.badge}>Chưa đọc</span>}</p>{!n.isRead&&<ReadNotification id={n.id}/>}</div></li>)}</ul>:<div className={styles.empty}><h3 className="font-semibold">Bạn đã xem hết thông báo hiện có</h3><p>Những tương tác phù hợp sẽ xuất hiện ở đây. Thông báo về nội dung không còn khả dụng sẽ được ẩn.</p><Link className="mt-5 inline-block text-sm text-link" href="/discovery">Khám phá Discovery →</Link></div>}<nav className={styles.pagination} aria-label="Phân trang thông báo">{data.next&&<Link className={styles.button} href={`/account/notifications?cursor=${encodeURIComponent(data.next)}`}>Xem thông báo tiếp theo ↓</Link>}{cursor&&<Link className={styles.button} href="/account/notifications">Về thông báo mới nhất</Link>}</nav></>}</section>;
 }

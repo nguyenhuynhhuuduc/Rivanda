@@ -3,7 +3,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 const root = path.resolve(__dirname, '../..');
-function discoveryLoader(db, mocks = {}) {
+function discoveryLoader(db, mocks = {}, globals = {}) {
   const cache = new Map();
   function load(file) {
     const absolute = path.resolve(root, file);
@@ -25,7 +25,7 @@ function discoveryLoader(db, mocks = {}) {
       return require(id);
     }
     vm.runInNewContext(code, { exports, require: localRequire, Buffer, File, FormData, Uint8Array, URL, URLSearchParams, Response, Request,
-      process: { cwd: () => root, env: { UPLOAD_DIR: process.env.DISCOVERY_QA_UPLOAD_DIR || path.join(process.env.DISCOVERY_QA_ROOT || require('node:os').tmpdir(), 'discovery-test-uploads'), SESSION_SECRET: 'synthetic-discovery-cursor-secret-for-tests-only' } }, console: { error() {} } }, { filename: file });
+      process: { cwd: () => root, env: { UPLOAD_DIR: process.env.DISCOVERY_QA_UPLOAD_DIR || path.join(process.env.DISCOVERY_QA_ROOT || require('node:os').tmpdir(), 'discovery-test-uploads'), SESSION_SECRET: 'synthetic-discovery-cursor-secret-for-tests-only' } }, console: { error() {} }, ...globals }, { filename: file });
     return exports;
   }
   return load;

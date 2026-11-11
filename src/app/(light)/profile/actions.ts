@@ -17,7 +17,7 @@ export async function followAction(form: FormData): Promise<{following?:boolean;
   if(!user) redirect(`/login?next=${encodeURIComponent(safeNext(typeof form.get("returnTo")==="string" ? form.get("returnTo") as string : `/profile/${targetId}`))}`);
   try {
     const result=await setFollow(user.id,targetId,operation==="follow");
-    if(result.following&&result.changed) await notify(targetId,"follow",`${user.displayName} đã bắt đầu theo dõi bạn.`,`/profile/${user.id}`);
+    if(result.following&&result.changed&&!result.notificationHandled) await notify(targetId,"follow",`${user.displayName} đã bắt đầu theo dõi bạn.`,`/profile/${user.id}`);
     revalidatePath("/profile","layout");
     revalidatePath("/discovery","layout");
     revalidatePath("/account/discovery");

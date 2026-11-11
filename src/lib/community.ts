@@ -3,6 +3,7 @@ import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./db";
 import { CommunityError, idOf } from "./discovery-community/model";
 import { decodeCursor, encodeCursor, feedScope, type Cursor } from "./discovery-community/cursor";
+import { enqueueDiscoveryNotice } from "./notifications";
 
 // ===== Bộ sưu tập =====
 export type Collection = { id: string; userId: string; name: string; isPublic: boolean; photoCount: number; coverFile: string | null };
@@ -64,7 +65,7 @@ export async function collectionIdsWithPhoto(userId: string, photoId: string): P
 }
 
 // ===== Theo dõi thành viên =====
-export async function setFollow(followerId: string, followedId: string, desired: boolean): Promise<{following:boolean;changed:boolean}> {
+export async function setFollow(followerId: string, followedId: string, desired: boolean): Promise<{following:boolean;changed:boolean;notificationHandled:boolean}> {
   followerId=idOf(followerId).toLowerCase(); followedId=idOf(followedId).toLowerCase();
   if (typeof desired !== "boolean" || followerId.toLowerCase() === followedId.toLowerCase()) throw new CommunityError("Không thể theo dõi chính mình hoặc yêu cầu không hợp lệ.");
   const tx = await pool.getConnection();
@@ -78,8 +79,9 @@ export async function setFollow(followerId: string, followedId: string, desired:
     const [rows] = await tx.query<RowDataPacket[]>("SELECT 1 FROM follows WHERE follower_id=? AND followed_id=? FOR UPDATE", [followerId, followedId]);
     const changed = !!rows.length !== desired;
     if (changed) await tx.query(desired ? "INSERT INTO follows (follower_id,followed_id) VALUES (?,?)" : "DELETE FROM follows WHERE follower_id=? AND followed_id=?", [followerId, followedId]);
+    const notificationHandled=changed&&desired?await enqueueDiscoveryNotice(tx,{kind:"follow",actorId:followerId,recipientId:followedId}):false;
     await tx.commit();
-    return {following:desired,changed};
+    return {following:desired,changed,notificationHandled};
   } catch (error) { await tx.rollback(); throw error; } finally { tx.release(); }
 }
 

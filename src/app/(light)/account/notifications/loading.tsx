@@ -1,0 +1,1 @@
+export default function NotificationLoading(){return <div role="status" aria-label="Đang tải thông báo"><p className="mb-6 text-muted">Đang tải thông báo…</p>{[0,1,2].map(i=><div key={i} aria-hidden="true" className="mb-3 h-28 rounded-2xl border border-line bg-card"/>)}</div>;}

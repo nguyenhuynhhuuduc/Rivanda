@@ -85,6 +85,7 @@ test('Discovery độc lập: thiếu 007 thì không hiện nút ghi hoặc CTA
 test('Header/Footer: bỏ Resources, giữ Blog/Discovery/JourneyStory/Cyber Lab/Shop', async () => {
   const mocks = { 'next/link': Link, '@/components/auth/LogoutForm': {}, '@/lib/auth': { getCurrentUser: async () => null },
     '@/lib/notifications': {}, '@/lib/permissions': {}, '@/lib/settings': { getHomeSettings: async () => ({ siteName: 'Fixture' }) },
+    '@/components/discovery-community/NotificationBell': { NotificationBell: () => null },
     '@/components/ThemeToggle': { ThemeToggle: () => null }, '@/components/SiteLogo': { SiteLogo: () => null }, '@/components/SocialIcons': { SocialIcons: () => null } };
   const header = load('src/components/site/SiteHeader.tsx', mocks), footer = load('src/components/site/SiteFooter.tsx', mocks);
   const html = render(await header.SiteHeader()) + render(await footer.SiteFooter());

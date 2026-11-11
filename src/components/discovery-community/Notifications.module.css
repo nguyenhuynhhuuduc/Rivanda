@@ -1,0 +1,26 @@
+.page { min-width: 0; }
+.header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 1.25rem; }
+.eyebrow { color: var(--link); text-transform: uppercase; font-size: .65rem; letter-spacing: .15em; font-weight: 700; margin-bottom: .5rem; }
+.title { font-size: clamp(1.7rem, 4vw, 2.3rem); line-height: 1.2; font-weight: 700; }
+.subtitle { margin-top: .75rem; color: var(--muted); font-size: .85rem; line-height: 1.7; }
+.tools { display: flex; flex-wrap: wrap; gap: .65rem; margin-block: 1.5rem; align-items: start; }
+.button { min-height: 44px; padding: .65rem .9rem; border: 1px solid var(--line); border-radius: .8rem; color: var(--fg); background: var(--surface); font-size: .75rem; transition: background .15s; }
+.button:hover { background: var(--card); }
+.button:disabled { opacity: .6; cursor: wait; }
+.page :is(a,button):focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+.list { display: grid; gap: .8rem; }
+.item { display: flex; align-items: start; gap: 1rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--surface); min-width: 0; }
+.unread { background: color-mix(in srgb, var(--link) 5%, var(--surface)); border-color: color-mix(in srgb, var(--link) 30%, var(--line)); }
+.icon { width: 2.5rem; height: 2.5rem; flex: none; border: 1px solid var(--line); border-radius: .8rem; display: grid; place-items: center; color: var(--link); background: var(--card); }
+.body { min-width: 0; flex: 1; }
+.message { font-size: .9rem; line-height: 1.7; overflow-wrap: anywhere; }
+a.message:hover { color: var(--link); }
+.meta { color: var(--muted); font-size: .7rem; line-height: 1.7; margin-block: .5rem; }
+.badge { color: var(--link); font-weight: 700; }
+.feedback { font-size: .75rem; overflow-wrap: anywhere; margin-top: .5rem; }
+.notice { border: 1px solid var(--line); border-radius: 1rem; padding: 1rem; margin-block: 1.5rem; font-size: .85rem; line-height: 1.8; }
+.empty { border: 1px dashed var(--line); border-radius: 1.2rem; text-align: center; padding: 3rem 1.25rem; }
+.empty p { margin-top: .7rem; color: var(--muted); font-size: .85rem; line-height: 1.8; }
+.pagination { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; }
+@media (max-width: 480px) { .item { gap: .65rem; padding: .9rem; } .icon { width: 2rem; height: 2rem; } }
+@media (prefers-reduced-motion: reduce) { .button { transition: none; } }

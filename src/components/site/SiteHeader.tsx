@@ -1,3 +1,4 @@
+import { NotificationBell } from "@/components/discovery-community/NotificationBell";
 import Link from "next/link";
 import { LogoutForm } from "@/components/auth/LogoutForm";
 import { getCurrentUser } from "@/lib/auth";
@@ -34,6 +35,7 @@ export async function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-3 xl:ml-0">
         <ThemeToggle />
+        {user&&<NotificationBell key={user.id} userId={user.id} unread={unread}/>}
         <div className="hidden items-center gap-4 xl:flex">
           <Link href="/search" aria-label="Tìm kiếm" className={link}>
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
@@ -41,10 +43,7 @@ export async function SiteHeader() {
           {user ? (
             <>
               {staff && <Link href="/admin" className={link}>Quản trị</Link>}
-              <Link href="/account/notifications" className={`${link} relative`} aria-label={`Thông báo${unread ? `, ${unread} chưa đọc` : ""}`}>
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 1 1 12 0v6l1.5 2h-15z" /><path d="M10 21h4" /></svg>
-                {unread > 0 && <span className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-gold px-1 text-[10px] font-medium text-navy-deep">{unread > 9 ? "9+" : unread}</span>}
-              </Link>
+
               <Link href="/account" className={`${link} max-w-[130px] truncate`}>{user.displayName}</Link>
               <LogoutForm><button className={link}>Đăng xuất</button></LogoutForm>
             </>

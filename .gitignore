@@ -76,6 +76,7 @@ undo_*
 !/sql/planned/006_blog_foundation.sql
 !/sql/planned/007_discovery_community.sql
 !/sql/planned/008_journeystory_maps.sql
+!/sql/planned/009_discovery_notifications.sql
 
 # Dependencies, generated files, caches and logs.
 node_modules/
