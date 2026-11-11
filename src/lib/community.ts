@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import { pool } from "./db";
+import { CommunityError, idOf } from "./discovery-community/model";
+import { decodeCursor, encodeCursor, feedScope, type Cursor } from "./discovery-community/cursor";
 
 // ===== Bộ sưu tập =====
 export type Collection = { id: string; userId: string; name: string; isPublic: boolean; photoCount: number; coverFile: string | null };
@@ -62,25 +64,54 @@ export async function collectionIdsWithPhoto(userId: string, photoId: string): P
 }
 
 // ===== Theo dõi thành viên =====
-export async function toggleFollow(followerId: string, followedId: string): Promise<boolean> {
-  if (followerId === followedId) return false;
-  const [res] = await pool.query<ResultSetHeader>("INSERT IGNORE INTO follows (follower_id, followed_id) VALUES (?, ?)", [followerId, followedId]);
-  if (res.affectedRows === 0) {
-    await pool.query("DELETE FROM follows WHERE follower_id = ? AND followed_id = ?", [followerId, followedId]);
-    return false;
-  }
-  return true;
+export async function setFollow(followerId: string, followedId: string, desired: boolean): Promise<{following:boolean;changed:boolean}> {
+  followerId=idOf(followerId).toLowerCase(); followedId=idOf(followedId).toLowerCase();
+  if (typeof desired !== "boolean" || followerId.toLowerCase() === followedId.toLowerCase()) throw new CommunityError("Không thể theo dõi chính mình hoặc yêu cầu không hợp lệ.");
+  const tx = await pool.getConnection();
+  try {
+    await tx.beginTransaction();
+    // A stable lock order also serializes opposite-direction follows and retries.
+    for (const id of [followerId, followedId].sort()) {
+      const [rows] = await tx.query<RowDataPacket[]>("SELECT id,is_active FROM users WHERE id=? FOR UPDATE", [id]);
+      if (!rows[0]?.is_active) throw new CommunityError("Tài khoản không khả dụng hoặc không có quyền theo dõi.");
+    }
+    const [rows] = await tx.query<RowDataPacket[]>("SELECT 1 FROM follows WHERE follower_id=? AND followed_id=? FOR UPDATE", [followerId, followedId]);
+    const changed = !!rows.length !== desired;
+    if (changed) await tx.query(desired ? "INSERT INTO follows (follower_id,followed_id) VALUES (?,?)" : "DELETE FROM follows WHERE follower_id=? AND followed_id=?", [followerId, followedId]);
+    await tx.commit();
+    return {following:desired,changed};
+  } catch (error) { await tx.rollback(); throw error; } finally { tx.release(); }
 }
 
 export async function isFollowing(followerId: string, followedId: string): Promise<boolean> {
+  idOf(followerId); idOf(followedId);
   const [rows] = await pool.query<RowDataPacket[]>("SELECT 1 FROM follows WHERE follower_id = ? AND followed_id = ?", [followerId, followedId]);
   return rows.length > 0;
 }
 
 export async function followCounts(userId: string): Promise<{ followers: number; following: number }> {
-  const [a] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM follows WHERE followed_id = ?", [userId]);
-  const [b] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM follows WHERE follower_id = ?", [userId]);
+  idOf(userId);
+  const [a] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM follows f JOIN users u ON u.id=f.follower_id AND u.is_active=1 WHERE f.followed_id = ?", [userId]);
+  const [b] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS n FROM follows f JOIN users u ON u.id=f.followed_id AND u.is_active=1 WHERE f.follower_id = ?", [userId]);
   return { followers: Number(a[0]?.n ?? 0), following: Number(b[0]?.n ?? 0) };
+}
+
+export async function followedMembers(viewerId: string, ids: string[]): Promise<Set<string>> {
+  idOf(viewerId); if (!ids.length) return new Set();
+  const [rows] = await pool.query<RowDataPacket[]>("SELECT followed_id FROM follows WHERE follower_id=? AND followed_id IN (?)", [viewerId, ids.map(idOf)]);
+  return new Set(rows.map(r=>r.followed_id as string));
+}
+
+export async function followPage(userId:string, direction:"followers"|"following", viewerId:string|null, token?:string) {
+  idOf(userId); if(viewerId) idOf(viewerId);
+  if(!["followers","following"].includes(direction)) throw new CommunityError("Danh sách không hợp lệ.");
+  const scope=feedScope("newest","members",userId,direction), cursor=token?decodeCursor(token,scope,"newest"):null;
+  const [[now]]=await pool.query<RowDataPacket[]>("SELECT DATE_FORMAT(NOW(6),'%Y-%m-%d %H:%i:%s.%f') AS t");
+  const base:Cursor=cursor??{v:1,order:"newest",scope,at:now.t,expires:Date.now()+30*60000};
+  const member=direction==="followers"?"f.follower_id":"f.followed_id", owner=direction==="followers"?"f.followed_id":"f.follower_id";
+  const [rows]=await pool.query<RowDataPacket[]>(`SELECT u.id,u.first_name,u.last_name,u.avatar_url,DATE_FORMAT(f.created_at,'%Y-%m-%d %H:%i:%s.%f') AS time_key FROM follows f JOIN users u ON u.id=${member} AND u.is_active=1 JOIN users owner ON owner.id=${owner} AND owner.is_active=1 WHERE ${owner}=? AND f.created_at<=? ${cursor?"AND (f.created_at<? OR (f.created_at=? AND u.id<?))":""} ORDER BY f.created_at DESC,u.id DESC LIMIT 21`,[userId,base.at,...(cursor?[cursor.lastTime,cursor.lastTime,cursor.lastId]:[])]);
+  const page=rows.slice(0,20), followed=viewerId?await followedMembers(viewerId,page.map(r=>r.id)):new Set<string>(), last=page.at(-1);
+  return {members:page.map(r=>({id:r.id as string,name:[r.last_name,r.first_name].filter(Boolean).join(" ")||"Thành viên",avatar:r.avatar_url as string|null,following:followed.has(r.id)})),next:rows.length>20&&last?encodeCursor({...base,lastTime:last.time_key,lastId:last.id}):null};
 }
 
 // ===== Báo cáo vi phạm =====

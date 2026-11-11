@@ -1,14 +1,15 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PhotoGrid } from "@/components/site/PhotoTile";
-import { Avatar, btnOutline, btnPrimary, Container, Empty, SectionHeading } from "@/components/ui/kit";
+import { Avatar, Container, Empty, SectionHeading } from "@/components/ui/kit";
 import { getCurrentUser } from "@/lib/auth";
 import { followCounts, isFollowing } from "@/lib/community";
 import { listPhotos, PUBLIC } from "@/lib/discovery";
 import { formatDate } from "@/lib/format";
 import { ROLE_LABEL } from "@/lib/permissions";
 import { getPublicProfile } from "@/lib/users";
-import { toggleFollowAction } from "../actions";
+import { FollowButton } from "@/components/discovery-community/FollowButton";
 import { ProfilePosts } from "@/components/discovery-community/ProfilePosts";
 
 export const dynamic = "force-dynamic";
@@ -39,14 +40,10 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
         <Avatar name={profile.displayName} url={profile.avatarUrl} size={96} />
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-4xl font-bold tracking-tight">{profile.displayName}</h1>
-          <p className="mt-1 text-sm text-muted">{ROLE_LABEL[profile.role]} · Tham gia {formatDate(profile.createdAt)} · {counts.followers} người theo dõi · {counts.following} đang theo dõi</p>
+          <p className="mt-1 text-sm text-muted">{ROLE_LABEL[profile.role]} · Tham gia {formatDate(profile.createdAt)} · <Link href={`/profile/${id}/followers`} className="text-link hover:underline">{counts.followers} người theo dõi</Link> · <Link href={`/profile/${id}/following`} className="text-link hover:underline">{counts.following} đang theo dõi</Link></p>
           {profile.bio && <p className="mt-3 max-w-2xl leading-relaxed">{profile.bio}</p>}
         </div>
-        {me?.id !== id && (
-          <form action={toggleFollowAction.bind(null, id)}>
-            <button className={following ? btnOutline : btnPrimary}>{following ? "Đang theo dõi" : "Theo dõi"}</button>
-          </form>
-        )}
+        <FollowButton key={me?.id??"guest"} targetId={id} name={profile.displayName} viewerId={me?.id} following={following} returnTo={`/profile/${id}`}/>
       </div>
 
       <ProfilePosts id={id} own={me?.id === id} />

@@ -10,7 +10,7 @@ const { discoveryLoader, root } = require('./helpers/discovery-loader.cjs');
 const {runCleanup}=require('../scripts/discovery-media-cleanup.cjs');
 const adapter=require('../src/lib/discovery-community/files.cjs');
 const enabled = process.env.DISCOVERY_QA_ROOT;
-let pool, store, read, db, model, media, cursor, social, discussion, storage,lifecycle,qaDatabase;
+let pool, store, read, db, model, media, cursor, social, discussion, storage,lifecycle,qaDatabase,follow;
 const actors = Array.from({length:5}, (_,i)=>({id:`71000000-0000-4000-8000-00000000000${i+1}`,role:i===0?'admin':'member'}));
 const [admin,alice,bob,inactive] = actors;
 const input = (extra={})=>({kind:'status',title:'',body:'Một chia sẻ tổng hợp QA',topicId:null,visibility:'public',intent:'publish',tags:[],...extra});
@@ -23,13 +23,14 @@ before(async()=>{
   assert.equal(Number(server.port),3321);assert.equal(server.dir.replaceAll('\\','/').replace(/\/$/,'').toLowerCase(),expected);
   const name=`discovery007_test_${Date.now()}`;qaDatabase=name;process.env.DISCOVERY_QA_UPLOAD_DIR=path.join(enabled,'storage-'+name);await conn.query(`CREATE DATABASE \`${name}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);await conn.changeUser({database:name});
   for(const sql of JSON.parse(fs.readFileSync(path.join(enabled,'base-schema.json'),'utf8')))await conn.query(sql);
+  await conn.query(fs.readFileSync(path.join(root,'sql/004_blueprint.sql'),'utf8').match(/CREATE TABLE IF NOT EXISTS follows[\s\S]*?;/)[0]);
   for(const [i,a]of actors.entries())await conn.query('INSERT INTO users(id,email,first_name,role,is_active) VALUES(?,?,?,?,?)',[a.id,`qa-${i}@example.invalid`,`QA ${i}`,a.role,i===3?0:1]);
   await conn.query("INSERT INTO tags(name,slug) VALUES('Existing sentinel','existing-sentinel')");
   const sql=fs.readFileSync(path.join(root,'sql/planned/007_discovery_community.sql'),'utf8').replace(/^--.*$/gm,'');
   try{for(const statement of sql.split(';').map(s=>s.trim()).filter(Boolean))await conn.query(statement);}catch(e){await conn.rollback();await conn.end();throw e;}
   await conn.end();pool=mysql.createPool({host:'127.0.0.1',port:3321,user:'root',database:name,connectionLimit:10});
   fs.writeFileSync(path.join(enabled,'qa-database.txt'),name);
-  const load=discoveryLoader(pool);store=load('src/lib/discovery-community/store.ts');read=load('src/lib/discovery-community/read.ts');db=load('src/lib/discovery-community/db.ts');model=load('src/lib/discovery-community/model.ts');media=load('src/lib/discovery-community/media.ts');cursor=load('src/lib/discovery-community/cursor.ts');social=load('src/lib/discovery-community/interactions.ts');discussion=load('src/lib/discovery-community/discussion-read.ts');storage=load('src/lib/discovery-community/storage.ts');lifecycle=load('src/lib/discovery-community/lifecycle.ts');
+  const load=discoveryLoader(pool);follow=load('src/lib/community.ts');store=load('src/lib/discovery-community/store.ts');read=load('src/lib/discovery-community/read.ts');db=load('src/lib/discovery-community/db.ts');model=load('src/lib/discovery-community/model.ts');media=load('src/lib/discovery-community/media.ts');cursor=load('src/lib/discovery-community/cursor.ts');social=load('src/lib/discovery-community/interactions.ts');discussion=load('src/lib/discovery-community/discussion-read.ts');storage=load('src/lib/discovery-community/storage.ts');lifecycle=load('src/lib/discovery-community/lifecycle.ts');
 });
 after(async()=>{if(pool)await pool.end();});
 async function registeredFile(actor,bytes=10,thumbBytes=bytes){const file={imageFile:randomUUID()+'.webp',thumbFile:randomUUID()+'.webp',byteSize:bytes,width:10,height:10};const plans=[[file.imageFile,bytes],[file.thumbFile,thumbBytes]].map(([name,n])=>({name,bytes:n,sha256:createHash('sha256').update(Buffer.alloc(n)).digest('hex')}));file.batchId=await storage.reserveStorage(actor,bytes+thumbBytes,plans);await pool.query("UPDATE community_storage_files SET state='stored',stored_at=NOW(6) WHERE batch_id=?",[file.batchId]);await storage.completeStorage(actor,file.batchId,[file]);return file;}
@@ -309,4 +310,49 @@ qa('trash ownership/Admin checks, cursor binding and retention labels come from 
   const a=await freshOwner(),ids=[];for(let i=0;i<14;i++){const id=await store.saveCommunityPost(a,input({title:'Private trash QA'}),[],[]);await store.deleteCommunityPost(a,id,1);ids.push(id);}
   const first=await lifecycle.trashPage(a),second=await lifecycle.trashPage(a,false,first.next);assert.equal(first.items.length,12);assert.equal(second.items.length,2);assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,14);await assert.rejects(()=>lifecycle.trashPage(bob,false,first.next));await assert.rejects(()=>lifecycle.trashPage({...bob,role:'admin'},true));assert.ok(!(await lifecycle.trashPage(bob)).items.some(p=>ids.includes(p.id)));
   const id=ids[0];await pool.query('UPDATE community_posts SET deleted_at=DATE_SUB(NOW(6),INTERVAL 45 DAY) WHERE id=?',[id]);await pool.query('INSERT INTO community_reports(id,reporter_id,post_id,reason) VALUES(?,?,?,?)',[randomUUID(),admin.id,id,'Review retained trash']);await pool.query("UPDATE users SET role='member' WHERE id=?",[a.id]);const owner=(await lifecycle.trashPage(a)).items.find(p=>p.id===id);assert.equal(owner.held,true);assert.equal(owner.restorable,false);const staff=(await lifecycle.trashPage(admin,true)).items.find(p=>p.id===id);assert.equal(staff.restorable,true);
+});
+
+qa('Follow: desired state is idempotent under concurrent Member/Admin requests',async()=>{
+ await Promise.all(Array.from({length:12},()=>follow.setFollow(alice.id,bob.id,true)));
+ assert.equal(await follow.isFollowing(alice.id,bob.id),true);
+ const [[r]]=await pool.query('SELECT COUNT(*) n FROM follows WHERE follower_id=? AND followed_id=?',[alice.id,bob.id]);assert.equal(r.n,1);
+ const results=await Promise.all(Array.from({length:8},()=>follow.setFollow(alice.id,bob.id,false)));assert.equal(results.filter(x=>x.changed).length,1);assert.equal(await follow.isFollowing(alice.id,bob.id),false);
+ await Promise.all([follow.setFollow(alice.id,admin.id,true),follow.setFollow(admin.id,alice.id,true)]);
+});
+qa('Follow: rejects self, spoofed/unknown IDs, disabled actor/target and rolls back write errors',async()=>{
+ for(const [a,b]of [[alice.id,alice.id.toUpperCase()],[inactive.id,bob.id],[alice.id,inactive.id],[alice.id,randomUUID()],['invalid',bob.id]])await assert.rejects(()=>follow.setFollow(a,b,true));
+ await follow.setFollow(alice.id,bob.id,false);
+ const faulty={getConnection:async()=>{const tx=await pool.getConnection();return new Proxy(tx,{get(t,k){if(k==='commit')return async()=>{throw Error('QA_COMMIT_FAILURE');};const value=t[k];return typeof value==='function'?value.bind(t):value;}});}};
+ await assert.rejects(()=>discoveryLoader(faulty)('src/lib/community.ts').setFollow(alice.id,bob.id,true),/QA_COMMIT_FAILURE/);assert.equal(await follow.isFollowing(alice.id,bob.id),false);
+});
+qa('Following feed: public only, no privilege override; refilters after unfollow/hide and rejects Guest/inactive',async()=>{
+ const author=await freshOwner(),viewer=await freshOwner();await follow.setFollow(viewer.id,author.id,true);
+ const pub=await store.saveCommunityPost(author,input(),[],[]);
+ for(const extra of [{visibility:'private'},{intent:'draft'}])await store.saveCommunityPost(author,input(extra),[],[]);
+ const hidden=await store.saveCommunityPost(author,input(),[],[]);await store.moderateCommunityPost(admin,hidden,1,'hide','QA');
+ const deleted=await store.saveCommunityPost(author,input(),[],[]);await store.deleteCommunityPost(author,deleted,1);
+ const feed=await read.communityFeed({order:'following',viewer});assert.deepEqual(feed.posts.map(p=>p.id),[pub]);assert.ok(feed.posts[0].following);
+ await assert.rejects(()=>read.communityFeed({order:'following'}),/Đăng nhập/);await assert.rejects(()=>read.communityFeed({order:'following',viewer:inactive}),/khả dụng/);
+ await follow.setFollow(viewer.id,author.id,false);assert.equal((await read.communityFeed({order:'following',viewer})).posts.length,0);
+});
+qa('Following feed: keyset pages, filter/account-scoped cursor and privacy rechecked on every page',async()=>{
+ const author=await freshOwner(),viewer=await freshOwner(),other=await freshOwner();await follow.setFollow(viewer.id,author.id,true);const ids=[];
+ for(let i=0;i<14;i++)ids.push(await store.saveCommunityPost(author,input({body:'follow-pagination '+i}),[],[]));
+ const f={order:'following',viewer,q:'follow-pagination'},first=await read.communityFeed(f);assert.equal(first.posts.length,12);assert.ok(first.next);
+ await assert.rejects(()=>read.communityFeed({...f,viewer:other,cursor:first.next}),/hết hạn/);await assert.rejects(()=>read.communityFeed({...f,q:'different',cursor:first.next}),/hết hạn/);
+ const second=await read.communityFeed({...f,cursor:first.next});assert.equal(second.posts.length,2);assert.equal(new Set([...first.posts,...second.posts].map(p=>p.id)).size,14);
+ for(const p of second.posts)await store.saveCommunityPost(author,input({visibility:'private'}),[],[],p.id,1);
+ assert.equal((await read.communityFeed({...f,cursor:first.next})).posts.length,0);
+ await follow.setFollow(viewer.id,author.id,false);assert.equal((await read.communityFeed({...f,cursor:first.next})).posts.length,0);
+});
+qa('Follow lists: counts, both directions, pagination with timestamp ties; no private account fields',async()=>{
+ const owner=await freshOwner(),members=[];for(let i=0;i<23;i++){const a=await freshOwner();members.push(a);await follow.setFollow(a.id,owner.id,true);}
+ await pool.query('UPDATE follows SET created_at=? WHERE followed_id=?',['2026-01-01 00:00:00',owner.id]);
+ const first=await follow.followPage(owner.id,'followers',members[0].id);assert.equal(first.members.length,20);assert.ok(first.next);
+ const second=await follow.followPage(owner.id,'followers',members[0].id,first.next);assert.equal(second.members.length,3);assert.equal(new Set([...first.members,...second.members].map(m=>m.id)).size,23);
+ assert.equal((await follow.followCounts(owner.id)).followers,23);assert.equal((await follow.followCounts(members[0].id)).following,1);
+ assert.equal((await follow.followPage(members[0].id,'following',null)).members[0].id,owner.id);
+ assert.deepEqual(Object.keys(first.members[0]).sort(),['avatar','following','id','name']);
+ await assert.rejects(()=>follow.followPage(owner.id,'following',null,first.next),/hết hạn/);
+ await pool.query('UPDATE users SET is_active=0 WHERE id=?',[members[0].id]);assert.equal((await follow.followCounts(owner.id)).followers,22);
 });
