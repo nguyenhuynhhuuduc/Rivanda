@@ -1,0 +1,7 @@
+{
+  "namespace": "discovery",
+  "orphanHours": 48,
+  "softDeleteDays": 30,
+  "leaseMinutes": 15,
+  "storageLimit": 104857600
+}

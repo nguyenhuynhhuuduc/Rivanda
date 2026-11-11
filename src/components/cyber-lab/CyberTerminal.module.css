@@ -1,0 +1,74 @@
+.panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+  padding: 1rem;
+  background: var(--card);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--warning);
+}
+
+.viewport {
+  position: relative;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.host {
+  width: 100%;
+  height: clamp(17rem, 45svh, 26rem);
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--next-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.host :global(.xterm) { height: 100%; }
+.host :global(.xterm-viewport) { background-color: var(--surface); }
+
+.fallback {
+  position: absolute;
+  inset: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: var(--surface);
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.notice {
+  border-top: 1px solid var(--line);
+  padding: 1rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}

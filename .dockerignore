@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+uploads
+tests
+design-references
+*.tsbuildinfo
+AGENTS.md
+PROJECT_CONTEXT.md
+CYBER_LAB_PLAN.md
+STAGING_DEPLOY_CHECKLIST.md

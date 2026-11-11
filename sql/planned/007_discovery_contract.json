@@ -1,0 +1,68 @@
+{
+  "revision": 3,
+  "sqlSha256": "42ac374c5a8ca28e3073130f464bee921aa64ea7a86563fd45c7c57b7d16c5df",
+  "tables": {
+    "community_comment_events": {
+      "ddl": "3947dc23d0e053a6ab46da5c22aaf11459b7a4c056c888bbf26158838c37c9f3",
+      "columns": "aee25dd838983adbe8f8b97adfcfe29a3300e54cf0843db1b16d7c39c6a7cea8"
+    },
+    "community_comments": {
+      "ddl": "a93814c8d9b06efa10645b4b35623cbdac4e6584e48d2376a1df12bf3aafeaf4",
+      "columns": "1c7c3504da44b51634e751bb040bda24da336afaac332583c03e5db8d740f654"
+    },
+    "community_likes": {
+      "ddl": "7b026f7b5362fea232b60cfc26e3da3cde99c7dea4075b5bc6bee78e7355673c",
+      "columns": "5b83a30306f804c8b2f4ed259dfa99e12f30aefaba4605550dbd790c1da2ae3a"
+    },
+    "community_media": {
+      "ddl": "ea8e941b4a52f0a453f3d026d22cc2aede72abbce242087c39432fefe7778c36",
+      "columns": "19a11364f1e7fe0886a15f1036c1c4295cfbfda585a841f4a97ef9c236b72d0f"
+    },
+    "community_post_tags": {
+      "ddl": "391a9c7139d73173ef3c80381ea42eaf7976549e365a7d765cad575ffa91a278",
+      "columns": "97aec0565b30d81b34ddbc4d418f4ac84d090fc44e89b672fa9e87763dd78131"
+    },
+    "community_posts": {
+      "ddl": "dc9ebadd6956bed2255f0d5b3fc7fc485d5c3209789a9647094d24ebf9ce9f26",
+      "columns": "97bea049060cbd9753b19d2aebdfb46d5082016e922043589a693c6dea0056a7"
+    },
+    "community_rate_buckets": {
+      "ddl": "a74263e3f2b9be9ebaabf1f598c9c8c2930568daafdabeb280d167f43288cc03",
+      "columns": "169251a9c13de3c0d0053297b4677441745164d86d2a2342309ab7d6eecd3606"
+    },
+    "community_reports": {
+      "ddl": "835c8f9034eb21d0bf5e08bc63e3ed5277fd396a66edb393b925a828b594ef02",
+      "columns": "c8bc6d6c04253e7d2bce5f3decc818d052398db78f64da7c7552e1e1544d41ee"
+    },
+    "community_review_events": {
+      "ddl": "4dcca209e6edc717865011364005ed06ca4177364fe486f78dffa5122e998ba1",
+      "columns": "ed01d718c826d650a075ecbfab370965e7af9f8e2cb23dede23f7f1a2162a2be"
+    },
+    "community_saves": {
+      "ddl": "fe133c8e7e6f0add050c8ba07e0b99c2c36df1bd54a4ba5f17f904780beb467a",
+      "columns": "5b83a30306f804c8b2f4ed259dfa99e12f30aefaba4605550dbd790c1da2ae3a"
+    },
+    "community_schema_state": {
+      "ddl": "08857d6c2ff72df5209aa5bf401485f39ab3a8eb174e92113bd543753eb83fb8",
+      "columns": "b44ddb7095103e45e1ee031a464352834d5d373311320915a2bf644cf9586b9c"
+    },
+    "community_storage_files": {
+      "ddl": "1ac7e4421cf80e9744c4da7e0a1432333f06d4eeafe6749beef30ed307b1a8b6",
+      "columns": "2e62217f951b0d3dc7791969093cfabb993fea5178296d9907f8f094cbdac707"
+    },
+    "community_topics": {
+      "ddl": "d69ce4f3c747ce9ca3d4bb9bb18243073f526b256118511f05a7f1b39cd20966",
+      "columns": "af13bae016ce1b518641c4406d7588ac54dd82a690bc5026de43b81076b61df8"
+    },
+    "community_upload_batches": {
+      "ddl": "2628096b4b3ccf616be2577b75f8b1a3ffae9e4133db0a539c662d60735b283d",
+      "columns": "8f42f72b96e2a0c8d1091d35e3ea67394c93d7018385221cba5f3d84164687b4"
+    }
+  },
+  "constraints": {
+    "PRIMARY KEY": 14,
+    "FOREIGN KEY": 26,
+    "UNIQUE": 8,
+    "CHECK": 21
+  }
+}

@@ -1,0 +1,72 @@
+.desktop { position: relative; display: flex; flex-direction: column; height: clamp(34rem, 72svh, 54rem); min-width: 0; overflow: hidden; border: 1px solid var(--line); border-radius: .85rem; background: var(--bg); color: var(--fg); isolation: isolate; }
+.desktop button:focus-visible, .desktop [tabindex]:focus-visible { outline: 2px solid var(--link); outline-offset: -3px; }
+.desktopTop { display: flex; min-height: 2.25rem; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem .75rem; border-bottom: 1px solid var(--line); background: var(--surface); font-size: .72rem; }
+.topDetail { margin-left: .6rem; color: var(--muted); }
+.stop { flex-shrink: 0; border: 1px solid var(--line); border-radius: .3rem; padding: .25rem .5rem; color: var(--danger); }
+.stage { position: relative; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+.wallpaper { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(ellipse at 80% 15%, color-mix(in srgb, var(--chart-1) 24%, transparent), transparent 60%), linear-gradient(130deg, var(--bg), var(--card)); }
+.wallpaper::after { content: ""; position: absolute; inset: 0; opacity: .16; background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 48px 48px; mask-image: linear-gradient(transparent, black); }
+.wallpaper svg { width: min(65%, 29rem); stroke: var(--chart-3); stroke-width: 2; opacity: .45; }
+.wallpaper > span { margin-top: -2rem; font: 700 clamp(2rem, 8vw, 5rem)/1 ui-monospace, monospace; letter-spacing: .25em; color: var(--fg); opacity: .1; }
+.wallpaper small { margin-top: 1rem; color: var(--muted); font-size: .6rem; letter-spacing: .18em; opacity: .65; }
+.desktopIcons { position: absolute; inset: 1rem auto auto .6rem; display: flex; flex-direction: column; gap: .75rem; width: 6rem; }
+.desktopIcons button { display: flex; flex-direction: column; align-items: center; gap: .4rem; padding: .4rem; border: 1px solid transparent; border-radius: .4rem; font-size: .7rem; text-align: center; overflow-wrap: anywhere; }
+.desktopIcons button:hover { background: var(--card); border-color: var(--line); }
+.desktopIcons button > span { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: .55rem; border: 1px solid var(--line); background: var(--surface); color: var(--chart-3); font: bold 1.2rem ui-monospace, monospace; box-shadow: 0 4px 12px #0001; }
+.window { position: absolute; display: flex; flex-direction: column; width: min(640px, calc(100% - 16px)); height: min(410px, calc(100% - 16px)); min-width: 0; min-height: 0; overflow: hidden; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: 0 16px 40px #0003; }
+.maximized { inset: 0 !important; width: 100%; height: 100%; border-radius: 0; }
+.minimized { display: none; }
+.titlebar { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; height: 2.25rem; padding-left: .65rem; border-bottom: 1px solid var(--line); background: var(--card); touch-action: none; user-select: none; cursor: move; }
+.windowTitle { flex: 1; min-width: 0; padding: .4rem 0; font-size: .75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.windowTitle > span { margin-right: .4rem; color: var(--link); }
+.windowControls { display: flex; height: 100%; cursor: default; }
+.windowControls button { width: 2.25rem; height: 100%; font-size: 1rem; }
+.windowControls button:hover { background: var(--line); }
+.windowControls button:last-child:hover { background: var(--danger); color: var(--surface); }
+.windowContent { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.terminalBody { position: relative; height: 100%; padding: .65rem; background: var(--surface); }
+.terminalHost { height: 100%; width: 100%; overflow: hidden; font-family: var(--next-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.terminalHost :global(.xterm) { height: 100%; }
+.terminalHost :global(.xterm-viewport) { background: var(--surface); }
+.terminalError { position: absolute; inset: .65rem; display: grid; align-content: center; gap: 1rem; padding: 1rem; background: var(--surface); color: var(--danger); font-size: .8rem; }
+.terminalError button { text-decoration: underline; }
+.fileManager { display: flex; flex-direction: column; min-height: 100%; font-size: .78rem; }
+.fileToolbar, .fileCreate { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .5rem; border-bottom: 1px solid var(--line); }
+.fileManager button:not(.fileList button) { border: 1px solid var(--line); border-radius: .3rem; padding: .35rem .6rem; background: var(--card); }
+.fileManager button:hover { border-color: var(--muted); }
+.breadcrumb { flex: 1; min-width: 4rem; overflow-wrap: anywhere; padding: .25rem; color: var(--muted); }
+.fileCreate input { flex: 1; min-width: 5rem; width: 100%; max-width: 18rem; border: 1px solid var(--line); border-radius: .3rem; padding: .4rem .5rem; background: var(--bg); }
+.fileList { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: .5rem; padding: .7rem; align-content: start; }
+.fileList > button { display: flex; flex-direction: column; align-items: center; gap: .4rem; min-width: 0; padding: .5rem; border: 1px solid transparent; border-radius: .3rem; overflow-wrap: anywhere; }
+.fileList > button > span:first-child { font-size: 1.75rem; }
+.fileList > button:hover, .selectedFile { background: var(--card); border-color: var(--line) !important; }
+.fileList p { grid-column: 1/-1; color: var(--muted); }
+.editor { display: flex; flex-direction: column; gap: .5rem; margin: 0 .65rem .65rem; min-height: 9rem; }
+.editor label { color: var(--muted); overflow-wrap: anywhere; }
+.editor textarea { flex: 1; width: 100%; min-height: 6rem; resize: vertical; border: 1px solid var(--line); border-radius: .3rem; padding: .6rem; background: var(--bg); color: var(--fg); font-family: var(--next-jetbrains), ui-monospace, monospace; }
+.editorActions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.fileError { margin: .5rem; color: var(--danger); overflow-wrap: anywhere; }
+.fileFooter { margin-top: auto; border-top: 1px solid var(--line); padding: .5rem .65rem; color: var(--muted); font-size: .68rem; }
+.about { padding: 1.25rem; font-size: .85rem; line-height: 1.7; }
+.about h2 { font-size: 1.15rem; font-weight: 600; }
+.about p { margin-top: 1rem; }
+.taskbar { position: relative; z-index: 1000; display: flex; align-items: stretch; flex-shrink: 0; gap: .4rem; height: 2.8rem; padding: .25rem .45rem; border-top: 1px solid var(--line); background: var(--surface); }
+.launcher { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; padding: 0 .55rem; border: 1px solid var(--line); border-radius: .3rem; background: var(--card); font-size: .75rem; }
+.tasks { display: flex; flex: 1; min-width: 0; gap: .25rem; overflow: auto; }
+.tasks > button { display: flex; align-items: center; gap: .45rem; min-width: 2.4rem; padding: .4rem .6rem; border: 1px solid transparent; border-radius: .3rem; font-size: .72rem; white-space: nowrap; }
+.activeTask { background: var(--card); border-color: var(--line) !important; }
+.clock { display: grid; align-items: center; padding: 0 .4rem; font-size: .75rem; font-variant-numeric: tabular-nums; }
+.appMenu { position: absolute; z-index: 9999; left: .45rem; bottom: .35rem; width: min(15rem, calc(100% - 1rem)); padding: .45rem; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface); box-shadow: 0 -8px 30px #0003; }
+.appMenu p { margin: .3rem .5rem .65rem; color: var(--muted); font-size: .7rem; }
+.appMenu button { display: flex; align-items: center; gap: .7rem; width: 100%; padding: .7rem .5rem; border-radius: .3rem; font-size: .8rem; text-align: left; }
+.appMenu button:hover { background: var(--card); }
+@media (max-width: 640px) {
+  .desktop { height: 70svh; min-height: 30rem; }
+  .topDetail { display: block; margin: .1rem 0 0; font-size: .6rem; }
+  .window { left: 6px !important; top: 6px !important; width: calc(100% - 12px); height: calc(100% - 12px); }
+  .maximized { inset: 0 !important; width: 100%; height: 100%; }
+  .launcher > span { display: none; }
+  .tasks > button { padding: .4rem; }
+  .tasks > button > span:last-child { display: none; }
+  .windowControls button { width: 2rem; }
+}
