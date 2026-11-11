@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type { RowDataPacket } from "mysql2";
+import type { PoolConnection } from "mysql2/promise";
 import { pool } from "./db";
 import { allocateVirtualIp } from "./cyber-ip";
 import type { OAuthProfile, Provider } from "./oauth";
@@ -175,13 +176,13 @@ export async function getPublicProfile(id: string): Promise<PublicProfile | null
 }
 
 export async function updateProfile(
-  id: string, input: { firstName: string; lastName: string; bio: string | null; avatarUrl?: string | null }
+  id: string, input: { firstName: string; lastName: string; bio: string | null; avatarUrl?: string | null }, executor: Pick<PoolConnection,"query"> = pool
 ): Promise<void> {
   if (input.avatarUrl !== undefined) {
-    await pool.query("UPDATE users SET first_name = ?, last_name = ?, bio = ?, avatar_url = ? WHERE id = ?",
+    await executor.query("UPDATE users SET first_name = ?, last_name = ?, bio = ?, avatar_url = ? WHERE id = ?",
       [input.firstName, input.lastName, input.bio, input.avatarUrl, id]);
   } else {
-    await pool.query("UPDATE users SET first_name = ?, last_name = ?, bio = ? WHERE id = ?",
+    await executor.query("UPDATE users SET first_name = ?, last_name = ?, bio = ? WHERE id = ?",
       [input.firstName, input.lastName, input.bio, id]);
   }
 }

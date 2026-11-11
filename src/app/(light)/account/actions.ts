@@ -8,8 +8,10 @@ import { createCollection, deleteCollection, removeFromCollection, updateCollect
 import { createPhoto, deletePhoto, getPhoto } from "@/lib/discovery";
 import { can } from "@/lib/permissions";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { deleteImageSet, saveAvatar, saveImageSet, UploadError } from "@/lib/uploads";
-import { findUserById, setPasswordHash, updateProfile } from "@/lib/users";
+import { deleteImageSet, saveProfileImage, saveImageSet, UploadError } from "@/lib/uploads";
+import { findUserById, setPasswordHash } from "@/lib/users";
+import { saveProfileDetails } from "@/lib/profile";
+import { CommunityError } from "@/lib/discovery-community/model";
 import { setPhotoTags, parseTagList } from "@/lib/tags";
 
 const clip = (fd: FormData, k: string, n: number) => String(fd.get(k) ?? "").trim().slice(0, n);
@@ -18,24 +20,16 @@ const to = (path: string, key: "ok" | "error", msg: string) => redirect(`${path}
 // ===== Hồ sơ =====
 export async function updateProfileAction(fd: FormData): Promise<void> {
   const user = await requireUser("/account");
-  const firstName = clip(fd, "firstName", 60);
-  const lastName = clip(fd, "lastName", 60);
-  if (!firstName) to("/account", "error", "Tên không được để trống.");
-
-  let avatarUrl: string | null | undefined;
   try {
-    const file = fd.get("avatar");
-    if (file instanceof File && file.size > 0) {
-      const name = await saveAvatar(file);
-      avatarUrl = `/uploads/${name}`;
-    } else if (fd.get("removeAvatar") === "on") {
-      avatarUrl = null;
-    }
-  } catch (err) {
-    to("/account", "error", err instanceof UploadError ? err.message : "Không lưu được ảnh đại diện.");
-  }
-
-  await updateProfile(user.id, { firstName, lastName, bio: clip(fd, "bio", 500) || null, avatarUrl });
+    const value=(key:string)=>{const v=fd.get(key);if(typeof v!=="string")throw new CommunityError("Thông tin hồ sơ không hợp lệ.");return v;};
+    const avatar=fd.get("avatar"),cover=fd.get("cover");
+    if((avatar&&!(avatar instanceof File))||(cover&&!(cover instanceof File)))throw new CommunityError("Ảnh tải lên không hợp lệ.");
+    const hasAvatar=avatar instanceof File&&avatar.size>0,hasCover=cover instanceof File&&cover.size>0;
+    await saveProfileDetails(user.id,{firstName:value("firstName"),lastName:value("lastName"),bio:value("bio"),version:value("profileVersion"),coverChange:hasCover||fd.get("removeCover")==="on"},async()=>({
+      avatarUrl:hasAvatar?`/uploads/${await saveProfileImage(avatar as File,"avatar")}`:fd.get("removeAvatar")==="on"?null:undefined,
+      coverFile:hasCover?await saveProfileImage(cover as File,"cover"):fd.get("removeCover")==="on"?null:undefined,
+    }));
+  } catch(error) { to("/account","error",error instanceof CommunityError||error instanceof UploadError?error.message:"Chưa lưu được hồ sơ. Hãy thử lại."); }
   revalidatePath("/", "layout");
   to("/account", "ok", "Đã lưu hồ sơ.");
 }

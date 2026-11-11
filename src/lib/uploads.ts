@@ -120,6 +120,17 @@ export async function saveAvatar(file: File): Promise<string> {
   return set.file;
 }
 
+// Profile-only strict decode/re-encode; existing photo/document pipelines stay unchanged.
+export const PROFILE_COVER_DIR=path.join(/*turbopackIgnore: true*/ UPLOAD_DIR,"profile-covers");
+export async function saveProfileImage(file:File,kind:"avatar"|"cover"):Promise<string>{
+  if(kind!=="avatar"&&kind!=="cover")throw new UploadError("Loại ảnh hồ sơ không hợp lệ.");
+  const max=kind==="avatar"?3*1024*1024:5*1024*1024;
+  if(!(file instanceof File)||file.size===0||file.size>max)throw new UploadError(`Ảnh ${kind==="avatar"?"đại diện":"bìa"} tối đa ${max/1048576}MB.`);
+  const data=Buffer.from(await file.arrayBuffer());if(!detectImageExt(data))throw new UploadError("Chỉ nhận ảnh JPG, PNG hoặc WebP hợp lệ.");
+  let output:Buffer;try{const sharp=(await import("sharp")).default;const image=sharp(data,{limitInputPixels:25000000,animated:false}).rotate();output=await image.resize({width:kind==="avatar"?320:1800,height:kind==="avatar"?320:600,fit:"cover",withoutEnlargement:true}).webp({quality:82}).toBuffer();}catch{throw new UploadError("Không đọc được ảnh. Hãy chọn JPG, PNG hoặc WebP hợp lệ, tối đa 25 megapixel.");}
+  const dir=kind==="cover"?PROFILE_COVER_DIR:UPLOAD_DIR;await mkdir(dir,{recursive:true});const fileName=`${randomUUID()}.webp`;await writeFile(path.join(/*turbopackIgnore: true*/ dir,fileName),output,{flag:"wx"});return fileName;
+}
+
 // ===== Tài liệu (PDF, Word, Excel, PowerPoint, zip, txt) =====
 // Lưu trong thư mục riêng, không công khai: chỉ tải được qua /api/documents/[id]/download.
 // Storage nằm ngoài build (Railway Volume): không trace cả dự án/secrets thành assets.

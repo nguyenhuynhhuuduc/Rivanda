@@ -35,6 +35,10 @@ export async function communityTopics(): Promise<Topic[]> {
   const [rows]=await pool.query<RowDataPacket[]>("SELECT id,name,slug FROM community_topics WHERE is_visible=1 AND deleted_at IS NULL ORDER BY sort_order,name,id");
   return rows.map(r=>({id:r.id,name:r.name,slug:r.slug}));
 }
+export async function publicCommunityPostCount(authorId:string):Promise<number|null>{
+  idOf(authorId);if(!await communityReady())return null;
+  const [[r]]=await pool.query<RowDataPacket[]>(`SELECT COUNT(*) n FROM community_posts p WHERE ${PUBLIC} AND p.author_id=? AND p.published_at<=NOW(6)`,[authorId]);return Number(r.n);
+}
 export async function getCommunityPost(id: string, viewer: Actor | null = null): Promise<Post | null> {
   idOf(id); if (!await communityReady()) return null;
   const [rows]=await pool.query<RowDataPacket[]>(`${select(true)} WHERE p.id=? AND p.status<>'deleted' AND (${PUBLIC} OR p.author_id=? OR ?=1) LIMIT 1`,[viewer?.id??null,viewer?.id??null,id,viewer?.id??null,viewer?.role==="admin"?1:0]);

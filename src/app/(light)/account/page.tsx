@@ -1,32 +1,15 @@
-import { btnPrimary, inputCls } from "@/components/ui/kit";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { inputCls } from "@/components/ui/kit";
 import { AvatarPicker } from "@/components/account/AvatarPicker";
+import { CoverPicker,ProfileSaveButton } from "@/components/account/CoverPicker";
 import { requireUser } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/permissions";
-import { getAvatarAndBio } from "@/lib/users";
+import { getProfileSettings } from "@/lib/profile";
 import { updateProfileAction } from "./actions";
-
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Hồ sơ" };
-
-export default async function AccountPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
-  const user = await requireUser("/account");
-  const [sp, extra] = await Promise.all([searchParams, getAvatarAndBio(user.id)]);
-  return (
-    <div className="max-w-xl">
-      <h2 className="font-display text-2xl font-bold">Hồ sơ</h2>
-      <p className="mt-1 text-sm text-muted">{user.email} · {ROLE_LABEL[user.role]}</p>
-      {sp.ok && <p role="status" className="mt-4 rounded-md bg-card px-4 py-3 text-sm">{sp.ok}</p>}
-      {sp.error && <p role="alert" className="mt-4 rounded-md bg-danger/10 px-4 py-3 text-sm text-danger">{sp.error}</p>}
-
-      <form action={updateProfileAction} className="mt-6 space-y-5">
-        <AvatarPicker key={extra.avatarUrl ?? "default-avatar"} name={user.displayName} currentUrl={extra.avatarUrl} />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div><label htmlFor="lastName" className="mb-1.5 block text-sm font-medium">Họ</label><input id="lastName" name="lastName" defaultValue={user.lastName} maxLength={60} className={inputCls} /></div>
-          <div><label htmlFor="firstName" className="mb-1.5 block text-sm font-medium">Tên</label><input id="firstName" name="firstName" defaultValue={user.firstName} required maxLength={60} className={inputCls} /></div>
-        </div>
-        <div><label htmlFor="bio" className="mb-1.5 block text-sm font-medium">Giới thiệu ngắn</label><textarea id="bio" name="bio" defaultValue={extra.bio ?? ""} rows={3} maxLength={500} className={inputCls} /></div>
-        <button className={btnPrimary}>Lưu hồ sơ</button>
-      </form>
-    </div>
-  );
+export const dynamic="force-dynamic";
+export const metadata={title:"Chỉnh sửa hồ sơ"};
+export default async function AccountPage({searchParams}:{searchParams:Promise<{ok?:string;error?:string}>}){
+ const user=await requireUser("/account"),[sp,profile]=await Promise.all([searchParams,getProfileSettings(user.id)]);if(!profile)notFound();
+ return <div className="max-w-3xl"><header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-widest text-link">Profile · Discovery</p><h2 className="mt-2 font-display text-3xl font-bold">Chỉnh sửa hồ sơ</h2><p className="mt-2 break-words text-sm text-muted">{user.email} · {ROLE_LABEL[user.role]}</p></div><Link href={`/profile/${user.id}`} className="inline-flex min-h-11 items-center rounded-xl border border-line px-4 text-sm hover:bg-card">Xem hồ sơ công khai →</Link></header>{sp.ok&&<p role="status" className="mt-5 rounded-xl border border-line bg-card p-4 text-sm">{sp.ok}</p>}{sp.error&&<p role="alert" className="mt-5 rounded-xl border border-line p-4 text-sm text-danger">{sp.error}</p>}<form action={updateProfileAction} className="mt-6 space-y-6 rounded-2xl border border-line bg-surface p-4 sm:p-6"><input name="profileVersion" type="hidden" value={profile.version}/><CoverPicker key={`cover-${profile.version}`} currentUrl={profile.coverUrl} enabled={profile.coverSupported}/><div className="border-t border-line pt-6"><AvatarPicker key={profile.avatarUrl??"default-avatar"} name={[profile.lastName,profile.firstName].filter(Boolean).join(" ")} currentUrl={profile.avatarUrl}/></div><p className="rounded-xl bg-card p-4 text-xs leading-6 text-muted">Tên, giới thiệu, avatar và ảnh bìa được hiển thị trên Profile công khai. Email tài khoản không hiển thị trên Profile.</p><div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="lastName" className="mb-2 block text-sm font-medium">Họ</label><input id="lastName" name="lastName" defaultValue={profile.lastName} maxLength={60} className={inputCls}/></div><div><label htmlFor="firstName" className="mb-2 block text-sm font-medium">Tên</label><input id="firstName" name="firstName" defaultValue={profile.firstName} required maxLength={60} className={inputCls}/></div></div><div><label htmlFor="bio" className="mb-2 block text-sm font-medium">Giới thiệu ngắn</label><textarea id="bio" name="bio" defaultValue={profile.bio??""} rows={4} maxLength={500} className={inputCls}/></div><div className="flex flex-wrap items-start justify-between gap-4"><ProfileSaveButton/><Link href="/account/discovery" className="inline-flex min-h-11 items-center text-sm text-link">Quản lý bài Discovery →</Link></div></form></div>;
 }
