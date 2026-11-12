@@ -127,15 +127,17 @@ test('Resources: API view/download giữ quyền, không đọc file khi bị ch
 test('JourneyStory: trang chi tiết giữ ID/slug, chỉ lấy ảnh published và canonical đúng', async () => {
   const item = { id, slug: 'fixture', title: 'Fixture', description: 'Fixture description', createdAt: new Date(), uploaderId: id };
   const shared = { 'next/link': () => null, 'next/navigation': { notFound: () => { throw Error('NOT_FOUND'); } },
-    '@/components/site/Cards': empty, '@/components/site/PhotoTile': empty, '@/components/ui/kit': empty, '@/lib/format': empty };
+    '@/components/site/Cards': empty, '@/components/site/PhotoTile': empty, '@/components/ui/kit': empty, '@/lib/format': empty,
+    '@/components/journeystory/JourneyGallery': empty, '@/lib/journeystory-read': { journeyPlaces: async () => ({ trip: [], photos: {} }) },
+    '@/lib/journeystory-view': { journeyPage: () => 1, journeyHref: slug => `/journeystory/journeys/${slug}` } };
   for (const kind of ['journeys', 'albums']) {
     let filter;
     const page = load(`src/app/(light)/journeystory/${kind}/[slug]/page.tsx`, { ...shared,
       '@/lib/discovery': { PUBLIC: ['published'], getTripBySlug: async slug => { assert.equal(slug, 'fixture'); return item; },
         getAlbumBySlug: async slug => { assert.equal(slug, 'fixture'); return item; },
-        listPhotos: async f => { filter = f; return { photos: [] }; }, listAlbums: async () => [], listStatuses: async () => [] },
+        listPhotos: async f => { filter = f; return { photos: [], total: 0 }; }, listAlbums: async () => [], listStatuses: async () => [] },
     });
-    const props = { params: Promise.resolve({ slug: 'fixture' }) };
+    const props = { params: Promise.resolve({ slug: 'fixture' }), searchParams: Promise.resolve({}) };
     assert.ok(await page.default(props));
     assert.equal(filter.statuses[0], 'published'); assert.equal(filter[kind === 'journeys' ? 'tripId' : 'albumId'], id);
     assert.equal((await page.generateMetadata(props)).alternates.canonical, `/journeystory/${kind}/fixture`);

@@ -104,6 +104,8 @@ test('DocRow: Home bỏ link nhưng giữ nội dung; trang archive/Account vẫ
 test('Home chỉ đổi link/nhãn: CTA archive về Blog; CTA Cyber Lab/Shop/custom giữ nguyên', async () => {
   let href;
   const page = load('src/app/page.tsx', { 'next/link': Link, '@/components/home/Sections': { HomeSection: () => null },
+    '@/components/home/TravelShowcase': { TravelShowcase: ({ settings, ctaHref, ctaLabel }) => React.createElement('div', null, settings.heroTitle, React.createElement('a', { href: ctaHref }, ctaLabel)) },
+    '@/lib/journeystory-read': { journeyCollections: async () => [] }, '@/lib/journeystory-view': { collectionPage: () => ({ journeys: [] }) },
     '@/components/site/SiteFooter': { SiteFooter: () => null }, '@/components/site/SiteHeader': { SiteHeader: () => null },
     '@/components/SiteLogo': { SiteLogo: () => null }, '@/components/SocialIcons': { SocialIcons: () => null },
     '@/components/ui/kit': { ...ui, btnOutline: '' }, '@/lib/settings': { getHomeSettings: async () => ({ ctaHref: href, ctaLabel: 'CTA fixture', heroTitle: 'Preserved hero' }), getHomeSections: async () => [] } });
