@@ -4,27 +4,43 @@ import { useState } from "react";
 import { inputCls } from "./styles";
 
 type Props = {
+  id?: string;
   name?: string;
   placeholder?: string;
   autoComplete: "current-password" | "new-password";
   minLength?: number;
+  value?: string;
+  onChange?: (value: string) => void;
+  onBlur?: () => void;
+  disabled?: boolean;
+  invalid?: boolean;
+  describedBy?: string;
 };
 
 export function PasswordField({
+  id,
   name = "password",
   placeholder = "Mật khẩu",
   autoComplete,
   minLength,
+  value,
+  onChange,
+  onBlur,
+  disabled,
+  invalid,
+  describedBy,
 }: Props) {
   const [show, setShow] = useState(false);
+  const fieldId = id ?? name;
+  const controlled = value !== undefined;
 
   return (
     <div className="relative">
-      <label className="sr-only" htmlFor={name}>
+      <label className="sr-only" htmlFor={fieldId}>
         {placeholder}
       </label>
       <input
-        id={name}
+        id={fieldId}
         name={name}
         type={show ? "text" : "password"}
         required
@@ -32,14 +48,20 @@ export function PasswordField({
         maxLength={128}
         autoComplete={autoComplete}
         placeholder={placeholder}
-        className={`${inputCls} pr-12`}
+        disabled={disabled}
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        {...(controlled ? { value, onChange: (e) => onChange?.(e.target.value) } : {})}
+        onBlur={onBlur}
+        className={`${inputCls} pr-12 ${invalid ? "border-danger focus:border-danger" : ""}`}
       />
       <button
         type="button"
         onClick={() => setShow((v) => !v)}
-        aria-label={show ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+        disabled={disabled}
+        aria-label={show ? `Ẩn ${placeholder.toLowerCase()}` : `Hiện ${placeholder.toLowerCase()}`}
         aria-pressed={show}
-        className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-md text-muted hover:text-fg"
+        className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-md text-muted transition hover:text-fg disabled:opacity-50"
       >
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {show ? (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ConfirmButton } from "@/components/ConfirmButton";
+import { MarkdownEditorField } from "@/components/admin/MarkdownEditorField";
 import { inputCls, btnPrimary, btnOutline } from "@/components/ui/kit";
 import { BLOG_STATE_LABEL, type BlogTopic } from "@/lib/blog-policy";
 import type { BlogRecord } from "@/lib/blog-read";
@@ -21,7 +22,17 @@ export function BlogEditor({ record, topics, admin = false }: { record?: BlogRec
       <label className="block text-sm">Tag (tối đa 8, cách nhau bằng dấu phẩy)<input name="tags" maxLength={320} defaultValue={post?.tags.map((t) => t.name).join(", ")} className={`${inputCls} mt-2`} /></label>
       {post?.coverFile && <div>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={`/uploads/${post.coverFile}`} alt="Ảnh bìa hiện tại" className="max-h-48 rounded-lg" /><label className="mt-2 block text-sm"><input name="removeCover" type="checkbox" /> Bỏ ảnh bìa khỏi bài</label></div>}
       <label className="block text-sm">Ảnh bìa (JPG/PNG/WebP, tối đa 5MB)<input type="file" name="cover" accept="image/jpeg,image/png,image/webp" className="mt-2 block w-full min-w-0 text-sm" /></label>
-      <label className="block text-sm">Nội dung Markdown<textarea name="content" maxLength={200000} rows={18} defaultValue={post?.content ?? ""} className={`${inputCls} mt-2 font-mono`} /></label>
+      <div className="block text-sm">
+        <p className="mb-2 font-medium">Nội dung Markdown</p>
+        <MarkdownEditorField
+          name="content"
+          defaultValue={post?.content ?? ""}
+          maxLength={200000}
+          rows={18}
+          textareaClassName={inputCls}
+          hint="Hỗ trợ Markdown đầy đủ, xuống dòng, bảng, khối mã và danh sách lệnh căn cột."
+        />
+      </div>
       <p className="text-sm text-muted">Sửa bài đã đăng sẽ đưa nội dung về nháp/chờ duyệt. Slug giữ nguyên. Mỗi User tối đa 20 lần lưu/gửi và 6 ảnh bìa trong 15 phút.</p>
       <div className="flex flex-wrap gap-3">
         <button name="intent" value="draft" className={btnOutline}>Lưu nháp</button>

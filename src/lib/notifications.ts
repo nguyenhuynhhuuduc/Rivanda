@@ -7,7 +7,7 @@ import { decodeCursor, encodeCursor, feedScope, type Cursor } from "./discovery-
 import { safeNext } from "./url";
 
 type Queryable=Pick<PoolConnection,"query">;
-export type Notification = { id:string; type:string; message:string; link:string|null; isRead:boolean; createdAt:Date };
+export type Notification = { id:string; type:string; message:string; link:string|null; isRead:boolean; createdAt:Date; actorName?:string|null; actorAvatar?:string|null };
 export type DiscoveryNotice={kind:"follow"|"like"|"comment"|"reply";actorId:string;recipientId:string;postId?:string;commentId?:string};
 const LEGACY="LEFT(n.type,10)<>'discovery_'";
 const PUBLIC="p.status='published' AND p.visibility='public' AND p.deleted_at IS NULL AND p.moderation_hold=0 AND p.purge_started_at IS NULL AND p.published_at<=NOW(6)";
@@ -68,15 +68,18 @@ function mapNotification(r:RowDataPacket):Notification{
   let link:string|null=r.link??null;
   if(discovery)link=kind==='follow'?`/profile/${r.actor_id}`:`/discovery/posts/${r.community_post_id}${r.community_comment_id?`?thread=${r.parent_id??r.community_comment_id}#comments`:''}`;
   if(link){const safe=safeNext(link);link=safe==='/'&&link!=='/'?null:safe;}
-  return{id:r.id,type:r.type,message,link,isRead:!!r.is_read,createdAt:r.created_at};
+  const actorName=discovery?name:null;
+  const actorAvatar=discovery&&typeof r.avatar_url==='string'&&r.avatar_url?r.avatar_url:null;
+  return{id:r.id,type:r.type,message,link,isRead:!!r.is_read,createdAt:r.created_at,actorName,actorAvatar};
 }
-export async function notificationPage(userId:string,token?:string):Promise<{items:Notification[];next:string|null;ready:boolean;unread:number}>{
+export async function notificationPage(userId:string,token?:string,pageSize=20):Promise<{items:Notification[];next:string|null;ready:boolean;unread:number}>{
   await active(userId);const ready=await discoveryNotificationsReady(),scope=feedScope('newest','notifications',userId,''),cursor=token?decodeCursor(token,scope,'newest'):null;
+  const limit=Math.max(1,Math.min(20,Math.trunc(Number(pageSize)||20)));
   const [[now]]=await pool.query<RowDataPacket[]>("SELECT DATE_FORMAT(NOW(6),'%Y-%m-%d %H:%i:%s.%f') t");
   const base:Cursor=cursor??{v:1,order:'newest',scope,at:now.t,expires:Date.now()+30*60000};
-  const [rows]=await pool.query<RowDataPacket[]>(`SELECT n.*,DATE_FORMAT(n.created_at,'%Y-%m-%d %H:%i:%s.%f') time_key ${ready?',a.first_name,a.last_name,c.parent_id':''} FROM notifications n ${ready?JOINS:''} WHERE n.user_id=? AND ${ready?ELIGIBLE:LEGACY} AND n.created_at<=? ${cursor?'AND (n.created_at<? OR (n.created_at=? AND n.id<?))':''} ORDER BY n.created_at DESC,n.id DESC LIMIT 21`,[userId,base.at,...(cursor?[cursor.lastTime,cursor.lastTime,cursor.lastId]:[])]);
-  const page=rows.slice(0,20),last=page.at(-1);
-  return{items:page.map(mapNotification),next:rows.length>20&&last?encodeCursor({...base,lastTime:last.time_key,lastId:last.id}):null,ready,unread:await notificationUnreadCount(userId)};
+  const [rows]=await pool.query<RowDataPacket[]>(`SELECT n.*,DATE_FORMAT(n.created_at,'%Y-%m-%d %H:%i:%s.%f') time_key ${ready?',a.first_name,a.last_name,a.avatar_url,c.parent_id':''} FROM notifications n ${ready?JOINS:''} WHERE n.user_id=? AND ${ready?ELIGIBLE:LEGACY} AND n.created_at<=? ${cursor?'AND (n.created_at<? OR (n.created_at=? AND n.id<?))':''} ORDER BY n.created_at DESC,n.id DESC LIMIT ?`,[userId,base.at,...(cursor?[cursor.lastTime,cursor.lastTime,cursor.lastId]:[]),limit+1]);
+  const page=rows.slice(0,limit),last=page.at(-1);
+  return{items:page.map(mapNotification),next:rows.length>limit&&last?encodeCursor({...base,lastTime:last.time_key,lastId:last.id}):null,ready,unread:await notificationUnreadCount(userId)};
 }
 export async function listNotifications(userId:string):Promise<Notification[]>{return(await notificationPage(userId)).items;}
 export async function unreadCount(userId:string):Promise<number>{

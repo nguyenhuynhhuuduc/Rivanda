@@ -2,15 +2,14 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSession, destroySession } from "@/lib/auth";
+import { createSession, destroySession, getCurrentUser } from "@/lib/auth";
+import { markOffline } from "@/lib/discovery-community/presence";
 import { consumeResetToken, requestPasswordReset } from "@/lib/password-reset";
 import { dummyVerify, hashPassword, verifyPassword } from "@/lib/password";
 import { clearAttempts, isBlocked, recordFailure } from "@/lib/ratelimit";
 import { safeNext } from "@/lib/url";
 import {
-  createUser,
   findUserByEmail,
-  isDuplicateError,
   touchLogin,
 } from "@/lib/users";
 
@@ -64,42 +63,18 @@ export async function registerAction(_prev: AuthState, fd: FormData): Promise<Au
   const lastName = field(fd, "lastName", 60);
   const firstName = field(fd, "firstName", 60);
   const email = field(fd, "email", 255).toLowerCase();
-  const password = String(fd.get("password") ?? "");
-  const agree = fd.get("agree") === "on";
-  const next = safeNext(String(fd.get("next") ?? ""));
-  const values = { firstName, lastName, email };
-
-  if (!firstName) return { error: "Nhập tên của bạn.", values };
-  if (!EMAIL_RE.test(email)) return { error: "Email chưa đúng định dạng.", values };
-  if (password.length < 8) return { error: "Mật khẩu cần ít nhất 8 ký tự.", values };
-  if (password.length > 128) return { error: "Mật khẩu quá dài (tối đa 128 ký tự).", values };
-  if (!agree) return { error: "Bạn cần đồng ý với điều khoản để tiếp tục.", values };
-
-  if (await findUserByEmail(email)) {
-    return { error: "Email này đã được đăng ký. Hãy đăng nhập.", values };
-  }
-
-  let userId: string;
-  try {
-    const user = await createUser({
-      email,
-      passwordHash: await hashPassword(password),
-      firstName,
-      lastName,
-    });
-    userId = user.id;
-  } catch (err) {
-    if (isDuplicateError(err)) {
-      return { error: "Email này đã được đăng ký. Hãy đăng nhập.", values };
-    }
-    return { error: "Chưa thể tạo tài khoản. Hãy thử lại sau hoặc liên hệ quản trị viên.", values };
-  }
-
-  await createSession(userId);
-  redirect(next);
+  // Chặn hoàn toàn việc bỏ qua xác thực Email OTP bằng gọi trực tiếp Server Action.
+  return {
+    error: "Vui lòng gửi và xác thực mã OTP qua email trước khi hoàn tất tạo tài khoản.",
+    values: { firstName, lastName, email },
+  };
 }
 
 export async function logoutAction() {
+  const current = await getCurrentUser().catch(() => null);
+  if (current) {
+    try { markOffline(current.id); } catch { /* không chặn đăng xuất */ }
+  }
   await destroySession();
   redirect("/");
 }

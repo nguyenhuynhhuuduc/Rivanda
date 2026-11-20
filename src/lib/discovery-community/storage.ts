@@ -14,7 +14,7 @@ export async function storageUsage(actor:Actor) {
 }
 export async function reserveStorage(actor:Actor,bytes:number,files?:StoragePlan[]) {
   if(!Number.isSafeInteger(bytes)||bytes<1||bytes>STORAGE_LIMIT)throw new CommunityError("Dung lượng ảnh không hợp lệ.");
-  if(files&&(!files.length||files.length>8||new Set(files.map(f=>f.name)).size!==files.length||files.reduce((n,f)=>n+f.bytes,0)!==bytes||files.some(f=>!/^[-a-f0-9]{36}\.webp$/.test(f.name)||!Number.isSafeInteger(f.bytes)||f.bytes<1||f.bytes>5*1024*1024||!/^[a-f0-9]{64}$/.test(f.sha256))))throw new CommunityError("Sổ tệp ảnh không hợp lệ.");
+  if(files&&(!files.length||files.length>16||new Set(files.map(f=>f.name)).size!==files.length||files.reduce((n,f)=>n+f.bytes,0)!==bytes||files.some(f=>!/^[-a-f0-9]{36}\.webp$/.test(f.name)||!Number.isSafeInteger(f.bytes)||f.bytes<1||f.bytes>5*1024*1024||!/^[a-f0-9]{64}$/.test(f.sha256))))throw new CommunityError("Sổ tệp ảnh không hợp lệ.");
   return transaction(async tx=>{
     const user=await lockActor(tx,actor);
     const [[r]]=await tx.query<RowDataPacket[]>("SELECT COALESCE(SUM(byte_size-released_bytes),0) AS used FROM community_upload_batches WHERE owner_id=?",[user.id]);

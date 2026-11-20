@@ -12,13 +12,14 @@ export function PostArticle({
   actions?: React.ReactNode; children?: React.ReactNode;
 }) {
   const toc = extractToc(post.content);
+  const hasToc = toc.length > 2;
   const cat = post.category ? CATEGORIES[post.category]?.label : null;
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
       <Link href={backHref} className="text-sm text-muted hover:text-fg">← {backLabel}</Link>
 
-      <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_240px]">
-        <article className="min-w-0 max-w-3xl">
+      <div className={hasToc ? "mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_240px]" : "mt-8"}>
+        <article className="min-w-0">
           <p className="text-xs uppercase tracking-[0.2em] text-link">
             {post.type === "hacking" ? SECTION_LABEL[post.section] : "Blog"}{cat ? ` · ${cat}` : ""}
           </p>
@@ -44,7 +45,7 @@ export function PostArticle({
           <div className="mt-10"><Markdown>{post.content}</Markdown></div>
         </article>
 
-        {toc.length > 2 && (
+        {hasToc && (
           <aside className="hidden lg:block">
             <nav aria-label="Mục lục" className="sticky top-24 border-l border-line pl-5 text-sm">
               <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-link">Mục lục</p>

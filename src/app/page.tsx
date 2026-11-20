@@ -8,7 +8,7 @@ import { collectionPage } from "@/lib/journeystory-view";
 export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const [s, sections, result] = await Promise.all([
-    getHomeSettings(), getHomeSections(), journeyCollections().then(journeys => ({ journeys, unavailable: false })).catch(() => ({ journeys: [], unavailable: true })),
+    getHomeSettings(), getHomeSections(), journeyCollections({ includeEmpty: true }).then(journeys => ({ journeys, unavailable: false })).catch(() => ({ journeys: [], unavailable: true })),
   ]);
   const ctaPath = s.ctaHref.split(/[?#]/)[0].replace(/\/+$/, "") || "/";
   const resourceCta = ["/document", "/documents"].includes(ctaPath) || /^\/(?:resources|documents\/(?:resources|projects))(?:\/|$)/.test(ctaPath);

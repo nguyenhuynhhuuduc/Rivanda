@@ -37,7 +37,7 @@ export async function restoreMedia(actor:Actor,id:string,expected:unknown) {
     const p=await lockPost(tx,lookup.post_id);checkOwner(p,user,revisionOf(expected));
     if(p.purge_started_at||p.purged_at)throw new CommunityError("Ảnh đang được xóa vĩnh viễn.");
     const [rows]=await tx.query<RowDataPacket[]>("SELECT * FROM community_media WHERE id=? AND removed_at IS NOT NULL AND purge_after>NOW(6) FOR UPDATE",[id]);if(!rows[0])throw new CommunityError("Ảnh đã hết thời hạn khôi phục 30 ngày.");
-    const [[count]]=await tx.query<RowDataPacket[]>("SELECT COUNT(*) n,COALESCE(MAX(sort_order),-1)+1 AS next_order FROM community_media WHERE post_id=? AND removed_at IS NULL",[p.id]);if(Number(count.n)>=4)throw new CommunityError("Bài đã đủ 4 ảnh. Hãy gỡ một ảnh trước khi khôi phục.");
+    const [[count]]=await tx.query<RowDataPacket[]>("SELECT COUNT(*) n,COALESCE(MAX(sort_order),-1)+1 AS next_order FROM community_media WHERE post_id=? AND removed_at IS NULL",[p.id]);if(Number(count.n)>=8)throw new CommunityError("Bài đã đủ 8 ảnh. Hãy gỡ một ảnh trước khi khôi phục.");
     const names=[rows[0].image_file,rows[0].thumb_file,rows[0].medium_file].filter(Boolean);
     const [files]=await tx.query<RowDataPacket[]>("SELECT file_name,state FROM community_storage_files WHERE owner_id=? AND file_name IN (?) FOR UPDATE",[user.id,names]);
     if(files.length!==names.length||files.some(f=>f.state!=="stored"))throw new CommunityError("Ảnh đang/đã được xóa vĩnh viễn.");

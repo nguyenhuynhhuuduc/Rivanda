@@ -134,7 +134,7 @@ export async function loginWithOAuth(
     await connection.beginTransaction();
     const id = randomUUID();
     await connection.execute(
-      "INSERT INTO users (id, email, password_hash, first_name, last_name, avatar_url) VALUES (?, ?, NULL, ?, ?, ?)",
+      "INSERT INTO users (id, email, password_hash, first_name, last_name, avatar_url, role) VALUES (?, ?, NULL, ?, ?, ?, 'member')",
       [id, email, (profile.firstName || "Thành viên").slice(0, 60), profile.lastName.slice(0, 60), profile.avatarUrl]
     );
     await connection.execute("INSERT INTO user_identities (provider, provider_user_id, user_id) VALUES (?, ?, ?)", [provider, profile.id, id]);
@@ -155,6 +155,37 @@ export async function loginWithOAuth(
     }
     throw err;
   } finally { connection.release(); }
+}
+
+/** Only call after an explicit OAuth link flow bound to the current website session. */
+export async function linkOAuthIdentity(userId: string, provider: Provider, profile: OAuthProfile): Promise<{ ok: true } | { ok: false; reason: "disabled" | "identity_in_use" | "provider_linked" }> {
+  if (!/^[A-Za-z0-9._-]{1,100}$/.test(profile.id)) throw new Error("Danh tính OAuth không hợp lệ.");
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    // Serialize all linking requests for this account without adding/rebuilding schema.
+    const [users] = await connection.execute<RowDataPacket[]>("SELECT id FROM users WHERE id = ? AND is_active = 1 FOR UPDATE", [userId]);
+    if (!users[0]) { await connection.rollback(); return { ok: false, reason: "disabled" }; }
+    const [identities] = await connection.execute<RowDataPacket[]>("SELECT provider_user_id FROM user_identities WHERE user_id = ? AND provider = ? FOR UPDATE", [userId, provider]);
+    if (identities.length) {
+      await connection.rollback();
+      return identities.length === 1 && identities[0].provider_user_id === profile.id ? { ok: true } : { ok: false, reason: "provider_linked" };
+    }
+    // Global PK(provider, provider_user_id) prevents stealing another user's identity,
+    // including simultaneous link/create callbacks. Do not UPDATE identity ownership.
+    await connection.execute("INSERT INTO user_identities (provider, provider_user_id, user_id) VALUES (?, ?, ?)", [provider, profile.id, userId]);
+    await connection.commit();
+    return { ok: true };
+  } catch (error) {
+    await connection.rollback();
+    if (isDuplicateError(error)) return { ok: false, reason: "identity_in_use" };
+    throw error;
+  } finally { connection.release(); }
+}
+
+export async function linkedOAuthProviders(userId: string): Promise<Provider[]> {
+  const [rows] = await pool.execute<RowDataPacket[]>("SELECT DISTINCT provider FROM user_identities WHERE user_id = ?", [userId]);
+  return rows.map(r => r.provider).filter((p): p is Provider => p === "google" || p === "facebook");
 }
 
 // ===== Hồ sơ và tài khoản =====

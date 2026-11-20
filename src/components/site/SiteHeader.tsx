@@ -7,17 +7,19 @@ import { can } from "@/lib/permissions";
 import { getHomeSettings } from "@/lib/settings";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { SiteLogo } from "@/components/SiteLogo";
+import { NavbarSearch } from "@/components/site/NavbarSearch";
+import { PresenceHeartbeat } from "@/components/site/PresenceHeartbeat";
 
 export const NAV = [
   { href: "/journeystory", label: "JourneyStory" },
-  { href: "/discovery", label: "Discovery" },
+  { href: "/discovery", label: "Community" },
   { href: "/cyber-lab", label: "Cyber Lab" },
   { href: "/documents/blog", label: "Blog" },
   { href: "/shop", label: "Shop" },
   { href: "/about", label: "Giới thiệu" },
 ];
 
-const link = "text-sm text-muted transition hover:text-fg";
+const link = "whitespace-nowrap text-sm text-muted transition hover:text-fg";
 
 export async function SiteHeader() {
   const [s, user] = await Promise.all([getHomeSettings(), getCurrentUser()]);
@@ -33,13 +35,12 @@ export async function SiteHeader() {
           {NAV.map((n) => <Link key={n.href} href={n.href} className={link}>{n.label}</Link>)}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 xl:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
         <ThemeToggle />
+        {user&&<PresenceHeartbeat userId={user.id}/>}
         {user&&<NotificationBell key={user.id} userId={user.id} unread={unread}/>}
-        <div className="hidden items-center gap-4 xl:flex">
-          <Link href="/search" aria-label="Tìm kiếm" className={link}>
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg>
-          </Link>
+        <NavbarSearch />
+        <div className="hidden shrink-0 items-center gap-4 xl:flex">
           {user ? (
             <>
               {staff && <Link href="/admin" className={link}>Quản trị</Link>}

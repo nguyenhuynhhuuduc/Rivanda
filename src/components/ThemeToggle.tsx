@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import styles from "./ThemeToggle.module.css";
 
 const KEY = "personal-site-theme";
 const EVENT = "personal-site-theme-change";
@@ -24,19 +25,93 @@ function subscribe(callback: () => void) {
   };
 }
 
+function SunIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="17"
+      height="17"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="4.1" />
+      <path d="M12 2.6v2.1M12 19.3v2.1M2.6 12h2.1M19.3 12h2.1M5.35 5.35l1.5 1.5M17.15 17.15l1.5 1.5M18.65 5.35l-1.5 1.5M6.85 17.15l-1.5 1.5" />
+    </svg>
+  );
+}
+
+function MoonIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="17"
+      height="17"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18.6 15.1A7.4 7.4 0 0 1 8.9 5.4a7.7 7.7 0 1 0 9.7 9.7Z" />
+      <path
+        d="M15.6 7.5l.55 1.3 1.3.55-1.3.55-.55 1.3-.55-1.3-1.3-.55 1.3-.55.55-1.3Z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <path
+        d="M18.6 5.2l.32.78.78.32-.78.32-.32.78-.32-.78-.78-.32.78-.32.32-.78Z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 export function ThemeToggle() {
-  const theme = useSyncExternalStore(subscribe, () => document.documentElement.dataset.theme ?? "light", () => "light");
+  const theme = useSyncExternalStore(
+    subscribe,
+    () => document.documentElement.dataset.theme ?? "light",
+    () => "light",
+  );
+
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem(KEY, next); } catch { /* vẫn đổi theme trong phiên hiện tại */ }
     window.dispatchEvent(new Event(EVENT));
   }
+
+  const isDark = theme === "dark";
+
   return (
-    <button type="button" onClick={toggle} className="theme-toggle" aria-label="Chuyển chế độ sáng / tối" title="Chuyển chế độ sáng / tối" aria-pressed={theme === "dark"}>
-      <svg className="theme-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></svg>
-      <svg className="theme-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="M20.5 14A8.6 8.6 0 0 1 10 3.5 8.7 8.7 0 1 0 20.5 14Z" /></svg>
-      <span className="hidden sm:inline">Giao diện</span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={isDark}
+      onClick={toggle}
+      className={styles.toggle}
+      aria-label="Chuyển chế độ sáng / tối"
+      title={isDark ? "Đang ở chế độ tối — Nhấn để chuyển sang sáng" : "Đang ở chế độ sáng — Nhấn để chuyển sang tối"}
+    >
+      <span className={styles.trackIcons} aria-hidden="true">
+        <span className={`${styles.trackSlot} ${styles.trackSun}`}>
+          <SunIcon />
+        </span>
+        <span className={`${styles.trackSlot} ${styles.trackMoon}`}>
+          <MoonIcon />
+        </span>
+      </span>
+
+      <span className={styles.knob} aria-hidden="true">
+        <SunIcon className={`${styles.knobIcon} ${styles.knobSun}`} />
+        <MoonIcon className={`${styles.knobIcon} ${styles.knobMoon}`} />
+      </span>
     </button>
   );
 }

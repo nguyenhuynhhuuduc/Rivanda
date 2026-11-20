@@ -8,7 +8,7 @@ import {retireMedia} from "./lifecycle";
 async function log(tx:PoolConnection,id:string,actor:Actor,revision:number,decision:string,note:string|null=null){await tx.query("INSERT INTO community_review_events(id,post_id,actor_id,revision,decision,note) VALUES(?,?,?,?,?,?)",[randomUUID(),id,actor.id,revision,decision,note]);}
 export async function saveCommunityPost(actor:Actor,raw:PostInput,media:PreparedMedia[],keepIds:string[],id?:string,expected?:number):Promise<string>{
   const input=validateInput(raw);
-  if(!Array.isArray(media)||media.length>4||!Array.isArray(keepIds)||new Set(keepIds).size!==keepIds.length||keepIds.length+media.length>4)throw new CommunityError("Tối đa 4 ảnh cho một bài.");
+  if(!Array.isArray(media)||media.length>8||!Array.isArray(keepIds)||new Set(keepIds).size!==keepIds.length||keepIds.length+media.length>8)throw new CommunityError("Tối đa 8 ảnh cho một bài.");
   keepIds.forEach(idOf);
   for(const m of media)if(!/^[a-f0-9-]{36}\.webp$/.test(m.imageFile)||!/^[a-f0-9-]{36}\.webp$/.test(m.thumbFile)||!Number.isSafeInteger(m.byteSize)||m.byteSize<1||m.byteSize>5*1024*1024||m.width<1||m.height<1)throw new CommunityError("Ảnh chưa được xử lý hợp lệ.");
   return transaction(async tx=>{

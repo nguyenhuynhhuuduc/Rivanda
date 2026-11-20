@@ -1,6 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { getHomeSections, getHomeSettings, SECTION_LABEL } from "@/lib/settings";
 import { moveSectionAction, saveHomeAction, toggleSectionAction } from "../actions";
+import { HomeBackgroundPicker } from "@/components/admin/HomeBackgroundPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function AdminHomePage({
     <div>
       <h1 className="text-2xl font-semibold">Chỉnh trang chủ</h1>
       <p className="mt-1 text-muted">
-        Thay đổi ở đây sẽ hiện ngay trên trang chủ của người xem.
+        Thay đổi được áp dụng sau khi lưu. Nền Home luôn ưu tiên ảnh bìa hành trình đang chọn.
       </p>
 
       {sp.saved && (
@@ -35,32 +36,8 @@ export default async function AdminHomePage({
 
       <form action={saveHomeAction} className="mt-6 grid gap-6 lg:grid-cols-2">
         <section className="space-y-4 rounded-2xl bg-surface p-6 ring-1 ring-line">
-          <h2 className="font-semibold">Ảnh nền</h2>
-          <div className="aspect-video overflow-hidden rounded-xl bg-[radial-gradient(ellipse_at_72%_28%,#4a7886_0%,#1a3a45_42%,#08141a_100%)]">
-            {s.heroImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={`/uploads/${s.heroImage}`}
-                alt="Ảnh nền hiện tại"
-                className="h-full w-full object-cover"
-              />
-            )}
-          </div>
-          <label className="block text-sm font-medium">
-            Chọn ảnh mới (JPG, PNG hoặc WebP, tối đa 5MB)
-            <input
-              type="file"
-              name="heroImage"
-              accept="image/jpeg,image/png,image/webp"
-              className="mt-1.5 block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-navy file:px-4 file:py-2 file:text-white hover:file:bg-navy-deep"
-            />
-          </label>
-          {s.heroImage && (
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" name="removeImage" />
-              Xóa ảnh hiện tại và dùng nền mặc định
-            </label>
-          )}
+          <h2 className="font-semibold">Ảnh nền dự phòng</h2>
+          <HomeBackgroundPicker key={s.heroImage ?? "default"} currentFile={s.heroImage} />
         </section>
 
         <section className="space-y-4 rounded-2xl bg-surface p-6 ring-1 ring-line">

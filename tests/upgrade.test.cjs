@@ -132,33 +132,36 @@ test('OAuth tạo user và identity cùng transaction; rollback khi identity l�
   }
 });
 
-const oauthEnv = { APP_URL: 'https://fixture.invalid', GOOGLE_CLIENT_ID: 'synthetic-client', GOOGLE_CLIENT_SECRET: 'synthetic-secret', FACEBOOK_APP_ID: 'synthetic-app', FACEBOOK_APP_SECRET: 'synthetic-secret' };
+const oauthEnv = { APP_URL: 'https://fixture.invalid', GOOGLE_CLIENT_ID: 'synthetic-client', GOOGLE_CLIENT_SECRET: 'synthetic-secret', FACEBOOK_APP_ID: 'synthetic-app', FACEBOOK_APP_SECRET: 'synthetic-secret', SESSION_SECRET: 'synthetic-oauth-session-secret-for-tests-only' };
 test('OAuth start giữ next, tạo state/provider và Google PKCE; thiếu cấu hình trả lỗi rõ ràng', async () => {
   for (const configured of [true, false]) {
     const cookies = new Map();
     const oauth = load('src/lib/oauth.ts', {}, configured ? oauthEnv : { APP_URL: oauthEnv.APP_URL });
-    const start = load('src/app/api/auth/[provider]/start/route.ts', { 'next/headers': { cookies: async () => ({ set: (k, v) => cookies.set(k, v), delete: k => cookies.delete(k) }) }, '@/lib/oauth': oauth, '@/lib/url': urls });
+    const flowState = load('src/lib/oauth-state.ts', { './oauth': oauth, './url': urls }, oauthEnv);
+    const start = load('src/app/api/auth/[provider]/start/route.ts', { '@/lib/auth': { getCurrentUser: async () => null }, '@/lib/oauth-state': flowState, 'next/headers': { cookies: async () => ({ get: k => cookies.has(k) ? { value: cookies.get(k) } : undefined, set: (k, v) => cookies.set(k, v), delete: k => cookies.delete(k) }) }, '@/lib/oauth': oauth, '@/lib/url': urls });
     const response = await start.GET(new NextRequest('https://fixture.invalid/api/auth/google/start?next=%2Fcyber-lab%2Ftools%3Fpage%3D2'), { params: Promise.resolve({ provider: 'google' }) });
     const target = new URL(response.headers.get('location'));
-    if (configured) { assert.equal(target.hostname, 'accounts.google.com'); assert.equal(target.searchParams.get('code_challenge_method'), 'S256'); assert.equal(cookies.get('oauth_provider'), 'google'); assert.equal(cookies.get('oauth_next'), '/cyber-lab/tools?page=2'); }
+    if (configured) { assert.equal(target.hostname, 'accounts.google.com'); assert.equal(target.searchParams.get('code_challenge_method'), 'S256'); const flow = await flowState.readOAuthFlow(cookies.get('oauth_flow'), 'google', target.searchParams.get('state')); assert.equal(flow.provider, 'google'); assert.equal(flow.next, '/cyber-lab/tools?page=2'); }
     else { assert.equal(target.searchParams.get('error'), 'provider_unavailable'); assert.equal(target.searchParams.get('next'), '/cyber-lab/tools?page=2'); }
   }
 });
 
 test('OAuth callback chặn state/provider sai, hủy đăng nhập; thành công giữ đích và xóa cookie tạm', async () => {
   for (const mode of ['bad-state', 'bad-provider', 'cancel', 'success']) {
-    const cookies = new Map([['oauth_state', 'a'.repeat(64)], ['oauth_provider', mode === 'bad-provider' ? 'facebook' : 'google'], ['oauth_next', '/cyber-lab/tools?page=2'], ['oauth_verifier', 'v'.repeat(43)]]);
+    const flowState = load('src/lib/oauth-state.ts', { './oauth': load('src/lib/oauth.ts', {}, oauthEnv), './url': urls }, oauthEnv);
+    const issued = await flowState.createOAuthFlow(mode === 'bad-provider' ? 'facebook' : 'google', '/cyber-lab/tools?page=2');
+    const cookies = new Map([['oauth_flow', issued.token]]);
     let fetched = 0, sessions = 0;
     const oauth = { ...load('src/lib/oauth.ts', {}, oauthEnv), fetchProfile: async () => { fetched++; return {}; } };
-    const callback = load('src/app/api/auth/[provider]/callback/route.ts', { 'next/headers': { cookies: async () => ({ get: k => cookies.has(k) ? { value: cookies.get(k) } : undefined, delete: k => cookies.delete(k) }) }, '@/lib/oauth': oauth, '@/lib/url': urls, '@/lib/auth': { createSession: async () => sessions++ }, '@/lib/users': { loginWithOAuth: async () => ({ ok: true, user }), touchLogin: async () => {} } });
-    const query = mode === 'cancel' ? 'error=access_denied' : `code=synthetic&state=${(mode === 'bad-state' ? 'b' : 'a').repeat(64)}`;
+    const callback = load('src/app/api/auth/[provider]/callback/route.ts', { '@/lib/oauth-state': flowState, 'next/headers': { cookies: async () => ({ get: k => cookies.has(k) ? { value: cookies.get(k) } : undefined, delete: k => cookies.delete(k) }) }, '@/lib/oauth': oauth, '@/lib/url': urls, '@/lib/auth': { createSession: async () => sessions++, getCurrentUser: async () => null }, '@/lib/users': { loginWithOAuth: async () => ({ ok: true, user }), touchLogin: async () => {} } });
+    const query = mode === 'cancel' ? `error=access_denied&state=${issued.flow.state}` : `code=synthetic&state=${mode === 'bad-state' ? 'b'.repeat(64) : issued.flow.state}`;
     const response = await callback.GET(new NextRequest(`https://fixture.invalid/api/auth/google/callback?${query}`), { params: Promise.resolve({ provider: 'google' }) });
     const target = new URL(response.headers.get('location'));
     assert.equal(cookies.size, 0);
     assert.equal(fetched, mode === 'success' ? 1 : 0);
     assert.equal(sessions, mode === 'success' ? 1 : 0);
     assert.equal(target.pathname, mode === 'success' ? '/cyber-lab/tools' : '/login');
-    if (mode !== 'success') assert.equal(target.searchParams.get('next'), '/cyber-lab/tools?page=2');
+    if (mode !== 'success') assert.equal(target.searchParams.get('next'), ['bad-state', 'bad-provider'].includes(mode) ? '/' : '/cyber-lab/tools?page=2');
   }
 });
 
@@ -192,7 +195,7 @@ test('biểu đồ không bịa dữ liệu, có empty state và bảng dữ li�
 
 test('email/password vẫn tạo session và quay về đúng Cyber Lab sau đăng nhập', async () => {
   let sessions = 0;
-  const actions = load('src/app/(auth)/actions.ts', { 'next/headers': { headers: async () => new Headers() }, 'next/navigation': { redirect: target => { throw Error(`REDIRECT:${target}`); } }, '@/lib/auth': { createSession: async () => sessions++ }, '@/lib/password-reset': {}, '@/lib/password': { verifyPassword: async () => true }, '@/lib/ratelimit': { isBlocked: async () => false, clearAttempts: async () => {} }, '@/lib/url': urls, '@/lib/users': { findUserByEmail: async () => ({ ...user, passwordHash: 'synthetic' }), touchLogin: async () => {} } }, {}, { Headers });
+  const actions = load('src/app/(auth)/actions.ts', { 'next/headers': { headers: async () => new Headers() }, 'next/navigation': { redirect: target => { throw Error(`REDIRECT:${target}`); } }, '@/lib/auth': { createSession: async () => sessions++, getCurrentUser: async () => null }, '@/lib/password-reset': {}, '@/lib/password': { verifyPassword: async () => true }, '@/lib/ratelimit': { isBlocked: async () => false, clearAttempts: async () => {} }, '@/lib/url': urls, '@/lib/users': { findUserByEmail: async () => ({ ...user, passwordHash: 'synthetic' }), touchLogin: async () => {} } }, {}, { Headers });
   const form = new FormData(); form.set('email', user.email); form.set('password', 'synthetic-password'); form.set('next', '/cyber-lab/tools?page=2');
   await assert.rejects(actions.loginAction({}, form), /REDIRECT:\/cyber-lab\/tools\?page=2/);
   assert.equal(sessions, 1);

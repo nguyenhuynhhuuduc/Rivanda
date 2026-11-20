@@ -45,8 +45,7 @@ Next.js 16 + TypeScript + MySQL + Tailwind CSS 4. Giao diện theo Design System
 
 ## Đăng nhập Google / Facebook (không bắt buộc)
 
-Điền `GOOGLE_*` hoặc `FACEBOOK_*`. Địa chỉ chuyển hướng khai báo ở nhà cung cấp:
-`http://localhost:3000/api/auth/google/callback` và `http://localhost:3000/api/auth/facebook/callback` (đổi theo tên miền khi đưa lên mạng, và đổi `APP_URL`).
+Xem [cấu hình OAuth chính thức](OAUTH_SETUP.md) cho biến môi trường, callback, Google External/Meta Live và kiểm thử người dùng bên ngoài. Hai nút có trên Login/Register; email/mật khẩu vẫn giữ nguyên. Chủ động liên kết tại `/account/security`; không tự gộp tài khoản theo email. Chưa có credentials thì nút ghi “Chưa bật”, không giả đăng nhập thành công.
 
 ## Chưa làm
 

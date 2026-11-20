@@ -9,7 +9,7 @@ import { CommunityError, type Actor, type PreparedMedia } from "./model";
 import { lockActor, quota, transaction } from "./db";
 import { reserveStorage, completeStorage } from "./storage";
 export function validateFiles(files: File[]): void {
-  if(files.length>4 || files.reduce((s,f)=>s+f.size,0)>20*1024*1024)throw new CommunityError("Tối đa 4 ảnh, tổng 20MB mỗi lần.");
+  if(files.length>8 || files.reduce((s,f)=>s+f.size,0)>40*1024*1024)throw new CommunityError("Tối đa 8 ảnh, tổng 40MB mỗi lần.");
   for(const f of files)if(!["image/jpeg","image/png","image/webp"].includes(f.type)||f.size<1||f.size>5*1024*1024)throw new CommunityError("Mỗi ảnh JPG/PNG/WebP tối đa 5MB.");
 }
 export async function prepareMedia(actor: Actor, files: File[]): Promise<PreparedMedia[]> {

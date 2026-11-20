@@ -1,0 +1,215 @@
+/* Công tắc Light/Dark 3D Neumorphism - trạng thái hiển thị bám [data-theme="dark"] để không nhấp nháy khi tải trang */
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 68px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid rgba(15, 28, 52, 0.1);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #d7dde8 0%, #e7ecf4 52%, #f4f7fb 100%);
+  box-shadow:
+    inset 0 3px 6px rgba(15, 28, 52, 0.2),
+    inset 0 1px 2px rgba(15, 28, 52, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.88),
+    0 2px 5px rgba(15, 28, 52, 0.08);
+  transition:
+    background 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 380ms ease,
+    box-shadow 380ms ease,
+    transform 160ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.toggle:hover {
+  border-color: rgba(245, 146, 20, 0.45);
+  box-shadow:
+    inset 0 3px 6px rgba(15, 28, 52, 0.22),
+    inset 0 1px 2px rgba(15, 28, 52, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.92),
+    0 3px 10px rgba(245, 146, 20, 0.18);
+}
+
+.toggle:active {
+  transform: scale(0.97);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+:global([data-theme="dark"]) .toggle {
+  border-color: rgba(148, 178, 232, 0.14);
+  background: linear-gradient(180deg, #131d36 0%, #1a2748 56%, #23345c 100%);
+  box-shadow:
+    inset 0 3px 7px rgba(4, 8, 22, 0.72),
+    inset 0 1px 2px rgba(4, 8, 22, 0.52),
+    0 1px 0 rgba(148, 178, 232, 0.16),
+    0 -1px 1px rgba(4, 8, 22, 0.4);
+}
+
+:global([data-theme="dark"]) .toggle:hover {
+  border-color: rgba(91, 157, 255, 0.45);
+  box-shadow:
+    inset 0 3px 7px rgba(4, 8, 22, 0.75),
+    inset 0 1px 2px rgba(4, 8, 22, 0.55),
+    0 1px 0 rgba(148, 178, 232, 0.2),
+    0 3px 12px rgba(59, 116, 255, 0.22);
+}
+
+/* Hàng biểu tượng chìm hai bên đường ray */
+.trackIcons {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.trackSlot {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  transition: opacity 320ms ease, color 320ms ease;
+}
+
+.trackSun {
+  color: rgba(130, 144, 168, 0.4);
+  opacity: 0;
+}
+
+.trackMoon {
+  color: rgba(124, 138, 164, 0.62);
+  opacity: 1;
+}
+
+:global([data-theme="dark"]) .trackSun {
+  color: rgba(142, 164, 210, 0.36);
+  opacity: 1;
+}
+
+:global([data-theme="dark"]) .trackMoon {
+  color: rgba(142, 164, 210, 0.25);
+  opacity: 0;
+}
+
+/* Nút tròn nổi 3D trượt hai chiều */
+.knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #ffbd2e 0%, #ff8d08 56%, #ec6e00 100%);
+  box-shadow:
+    inset 0 1.5px 2px rgba(255, 244, 204, 0.8),
+    inset 0 -2px 3px rgba(176, 68, 0, 0.42),
+    0 3px 7px rgba(226, 108, 0, 0.42),
+    0 1.5px 3px rgba(15, 23, 42, 0.22);
+  transform: translateX(0);
+  transition:
+    transform 400ms cubic-bezier(0.34, 1.22, 0.64, 1),
+    background 380ms ease,
+    box-shadow 380ms ease,
+    filter 200ms ease;
+  pointer-events: none;
+}
+
+.toggle:hover .knob {
+  filter: brightness(1.05);
+}
+
+.toggle:active .knob {
+  transform: translateX(0) scale(0.93);
+}
+
+:global([data-theme="dark"]) .knob {
+  background: linear-gradient(145deg, #62a3ff 0%, #3d76ff 56%, #2958e3 100%);
+  box-shadow:
+    inset 0 1.5px 2px rgba(206, 230, 255, 0.72),
+    inset 0 -2px 3px rgba(17, 44, 145, 0.55),
+    0 3px 8px rgba(49, 102, 245, 0.48),
+    0 2px 4px rgba(4, 10, 28, 0.5);
+  transform: translateX(32px);
+}
+
+:global([data-theme="dark"]) .toggle:active .knob {
+  transform: translateX(32px) scale(0.93);
+}
+
+/* Biểu tượng bên trong nút tròn */
+.knobIcon {
+  position: absolute;
+  display: block;
+  color: #ffffff;
+  filter: drop-shadow(0 1px 1.5px rgba(15, 23, 42, 0.24));
+  transition:
+    opacity 280ms ease,
+    transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.knobSun {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.knobMoon {
+  opacity: 0;
+  transform: scale(0.55) rotate(-40deg);
+}
+
+:global([data-theme="dark"]) .knobSun {
+  opacity: 0;
+  transform: scale(0.55) rotate(45deg);
+}
+
+:global([data-theme="dark"]) .knobMoon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+/* Mobile gọn nhẹ hơn nhưng giữ tỷ lệ đối xứng chính xác */
+@media (max-width: 480px) {
+  .toggle {
+    width: 62px;
+    height: 34px;
+  }
+
+  .trackSlot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .knob {
+    width: 28px;
+    height: 28px;
+  }
+
+  :global([data-theme="dark"]) .knob {
+    transform: translateX(28px);
+  }
+
+  :global([data-theme="dark"]) .toggle:active .knob {
+    transform: translateX(28px) scale(0.93);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggle,
+  .trackSlot,
+  .knob,
+  .knobIcon {
+    transition: none !important;
+  }
+}

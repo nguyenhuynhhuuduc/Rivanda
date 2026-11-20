@@ -1,0 +1,327 @@
+/* Giữ cố định đúng ô 40x40 trong flex của Navbar: mở/đóng tuyệt đối KHÔNG đẩy hay làm xuống dòng bất kỳ mục nào */
+.root {
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+}
+
+.bar {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  overflow: hidden;
+  transition:
+    width .26s cubic-bezier(.22, 1, .36, 1),
+    background-color .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+.bar:hover:not(.expanded) {
+  background: var(--card);
+  color: var(--fg);
+}
+
+.expanded {
+  width: min(268px, var(--nav-search-max, 268px));
+  height: 2.75rem;
+  border-color: color-mix(in srgb, var(--color-gold) 68%, var(--line));
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 10px 30px rgb(5 14 28 / .28);
+}
+
+:global([data-theme="dark"]) .expanded {
+  background: #0f1d30;
+}
+
+.expanded:focus-within {
+  border-color: var(--color-gold);
+  box-shadow:
+    0 10px 30px rgb(5 14 28 / .28),
+    0 0 0 2px color-mix(in srgb, var(--color-gold) 24%, transparent);
+}
+
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  color: inherit;
+  border-radius: 999px;
+}
+
+.expanded .trigger {
+  width: 2.25rem;
+  color: var(--link);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--fg);
+  font-size: .835rem;
+  padding: 0 .2rem 0 0;
+}
+
+.input::placeholder {
+  color: var(--muted);
+  opacity: .85;
+}
+
+.input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.spinner {
+  width: .9rem;
+  height: .9rem;
+  margin-right: .25rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--color-gold);
+  animation: navSearchSpin .7s linear infinite;
+}
+
+.closeBtn {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-right: .32rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+.closeBtn:hover {
+  background: var(--card);
+  color: var(--fg);
+}
+
+/* ===== Dropdown kết quả trực tiếp ===== */
+.dropdown {
+  position: absolute;
+  top: calc(100% + .65rem);
+  right: 0;
+  z-index: 50;
+  width: min(390px, calc(100vw - 1.5rem));
+  max-height: min(70vh, 480px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: 0 20px 50px rgb(5 14 28 / .28);
+  animation: navDropIn .16s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.dropdownBody {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: .5rem;
+}
+
+.section {
+  padding: .25rem 0;
+}
+
+.section + .section {
+  margin-top: .35rem;
+  padding-top: .55rem;
+  border-top: 1px solid var(--line);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .25rem .6rem .45rem;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--link);
+}
+
+.hit {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  padding: .55rem .6rem;
+  border-radius: .75rem;
+  min-width: 0;
+  transition: background-color .14s ease;
+}
+
+.hit:hover,
+.hit:focus-visible {
+  background: var(--card);
+  outline: none;
+}
+
+.hitBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.hitTitle {
+  display: block;
+  font-size: .84rem;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hitMeta {
+  margin-top: .15rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .35rem;
+  font-size: .72rem;
+  color: var(--muted);
+}
+
+.ipBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: .05rem .4rem;
+  border-radius: .4rem;
+  border: 1px solid color-mix(in srgb, var(--link) 35%, var(--line));
+  background: color-mix(in srgb, var(--link) 10%, var(--bg));
+  color: var(--link);
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 600;
+}
+
+.idChip {
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  color: var(--muted);
+}
+
+.kindBadge {
+  display: inline-flex;
+  padding: .05rem .4rem;
+  border-radius: .4rem;
+  background: var(--card);
+  color: var(--link);
+  font-size: .66rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.hitExcerpt {
+  display: block;
+  margin-top: .15rem;
+  font-size: .75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emptyState {
+  padding: 1.4rem 1rem;
+  text-align: center;
+  font-size: .82rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.loadingRows {
+  display: grid;
+  gap: .45rem;
+  padding: .45rem .5rem;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .35rem 0;
+}
+
+.skeleton {
+  background: var(--card);
+  border-radius: .5rem;
+  animation: navPulse 1.4s ease-in-out infinite;
+}
+
+.dropdownFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .65rem .85rem;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--link);
+}
+
+.dropdownFooter:hover {
+  background: var(--card);
+}
+
+/* Mobile: mở thanh tìm kiếm nổi gọn ngay dưới hàng Navbar, không tràn màn hình */
+@media (max-width: 639px) {
+  .expanded {
+    position: fixed;
+    top: .85rem;
+    left: .75rem;
+    right: .75rem;
+    transform: none;
+    width: auto;
+    z-index: 55;
+    box-shadow: 0 12px 32px rgb(5 14 28 / .34);
+  }
+  .dropdown {
+    position: fixed;
+    top: 3.9rem;
+    left: .75rem;
+    right: .75rem;
+    width: auto;
+    max-height: calc(100dvh - 5rem);
+  }
+}
+
+@keyframes navSearchSpin { to { transform: rotate(360deg); } }
+@keyframes navDropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes navPulse { 50% { opacity: .45; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .bar, .dropdown, .spinner, .skeleton {
+    animation: none !important;
+    transition: none !important;
+  }
+}

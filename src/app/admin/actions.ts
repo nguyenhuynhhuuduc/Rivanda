@@ -38,11 +38,11 @@ export async function saveHomeAction(formData: FormData) {
   const removeImage = formData.get("removeImage") === "on";
 
   try {
-    if (file instanceof File && file.size > 0) {
+    if (removeImage) {
+      heroImage = null;
+    } else if (file instanceof File && file.size > 0) {
       const saved = await saveImage(file);
       heroImage = saved;
-    } else if (removeImage) {
-      heroImage = null;
     }
   } catch (err) {
     const msg =

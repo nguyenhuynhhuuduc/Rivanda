@@ -16,6 +16,7 @@ import { deleteImageSet, saveImageSet, UploadError } from "@/lib/uploads";
 import { dateOrNull, files, flag, qs, str, strOrNull, uuidOrNull } from "./helpers";
 
 const PHOTO_MAX_BYTES = 8 * 1024 * 1024;
+const MAX_UPLOAD_PHOTOS = 40;
 const STATUSES: PhotoStatus[] = ["draft", "pending", "published", "rejected", "archived"];
 const statusOf = (v: string): PhotoStatus => (STATUSES.includes(v as PhotoStatus) ? (v as PhotoStatus) : "draft");
 
@@ -102,9 +103,17 @@ export async function deleteAlbumAction(id: string): Promise<void> {
 // ===== Ảnh =====
 export async function uploadPhotosAction(fd: FormData): Promise<void> {
   const user = await requirePermission("content.manage");
+  const rawFiles = fd
+    .getAll("images")
+    .filter((f): f is File => f instanceof File && (f.size > 0 || f.name.trim() !== ""));
   const list = files(fd, "images");
+  if (rawFiles.length > MAX_UPLOAD_PHOTOS || list.length > MAX_UPLOAD_PHOTOS) {
+    redirect(
+      "/admin/photos" +
+        qs("error", "Bạn chỉ có thể đăng tối đa 40 ảnh trong một lần. Vui lòng chọn lại.")
+    );
+  }
   if (list.length === 0) redirect("/admin/photos" + qs("error", "Hãy chọn ít nhất một ảnh."));
-  if (list.length > 20) redirect("/admin/photos" + qs("error", "Mỗi lần tải tối đa 20 ảnh."));
 
   const albumId = uuidOrNull(fd, "albumId");
   const tags = parseTagList(str(fd, "tags", 200));

@@ -3,8 +3,9 @@ const nextConfig = {
   // sharp (tạo ảnh thu nhỏ) và nodemailer là thư viện chạy phía server, không đóng gói vào bundle
   serverExternalPackages: ["sharp", "nodemailer"],
   experimental: {
-    // Cho phép tải ảnh và tài liệu tới 25MB mỗi lần qua Server Action (mặc định chỉ 1MB)
-    serverActions: { bodySizeLimit: "25mb" },
+    // Cho phép tải tối đa 40 ảnh × 8MB mỗi lần (kèm dữ liệu form) qua Server Action và Proxy
+    serverActions: { bodySizeLimit: "340mb" },
+    proxyClientMaxBodySize: "340mb",
   },
   async headers() {
     return [{ source: "/:path*", headers: [

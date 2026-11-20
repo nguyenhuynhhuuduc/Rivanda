@@ -1,0 +1,113 @@
+.status {
+  display: flex;
+  min-height: 55vh;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 2.5rem 1rem;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: .875rem;
+}
+
+.compact {
+  display: inline-flex;
+  align-items: center;
+  gap: .75rem;
+  padding: .45rem .9rem;
+  margin-bottom: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 500;
+}
+
+.spinner {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.compact .spinner {
+  width: 22px;
+  height: 22px;
+}
+
+.ringOuter,
+.ringInner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.ringOuter {
+  border: 3px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-top-color: var(--color-gold);
+  border-right-color: color-mix(in srgb, var(--color-gold) 45%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--color-gold) 20%, transparent);
+  animation: pageSpin .85s cubic-bezier(.55, .15, .45, .85) infinite;
+}
+
+.compact .ringOuter {
+  border-width: 2.5px;
+  box-shadow: none;
+}
+
+.ringInner {
+  inset: 9px;
+  border: 2px solid transparent;
+  border-bottom-color: var(--fg);
+  border-left-color: color-mix(in srgb, var(--fg) 35%, transparent);
+  opacity: .55;
+  animation: pageSpinReverse 1.25s linear infinite;
+}
+
+.compact .ringInner {
+  inset: 5px;
+  border-width: 1.5px;
+}
+
+.core {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  animation: corePulse 1.3s ease-in-out infinite;
+}
+
+.compact .core {
+  display: none;
+}
+
+.label {
+  letter-spacing: .04em;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+@keyframes pageSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pageSpinReverse {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes corePulse {
+  0%, 100% { transform: scale(.85); opacity: .6; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ringOuter,
+  .ringInner,
+  .core {
+    animation: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { adminBtn, adminInput, Card, Field } from "./ui";
+import { MarkdownEditorField } from "./MarkdownEditorField";
 import { savePostAction } from "@/app/admin/post-actions";
 import { CATEGORIES, SECTIONS } from "@/lib/cyber-lab";
 import type { Post, PostType } from "@/lib/posts";
@@ -79,16 +80,19 @@ export function PostForm({ post, defaultType }: { post?: Post; defaultType?: Pos
       </Card>
 
       <Card title="Nội dung">
-        <p className="mb-3 text-sm text-muted">
-          Viết bằng Markdown: <code># Tiêu đề</code>, <code>**đậm**</code>, <code>- danh sách</code>,{" "}
-          <code>[chữ](https://link)</code>, <code>![mô tả](https://link-anh)</code>, khối mã bằng ba dấu <code>`</code>.
-        </p>
-        <textarea
+        <MarkdownEditorField
           name="content"
-          defaultValue={post?.content}
+          defaultValue={post?.content ?? ""}
           required
           rows={24}
-          className={`${adminInput} font-mono leading-relaxed`}
+          textareaClassName={adminInput}
+          hint={
+            <>
+              Viết bằng Markdown: <code># Tiêu đề</code>, <code>**đậm**</code>, <code>- danh sách</code>,{" "}
+              <code>[chữ](https://link)</code>, <code>![mô tả](https://link-anh)</code>, khối mã bằng ba dấu{" "}
+              <code>`</code> (lệnh căn cột <code>lệnh    : chú thích</code> tự giữ nguyên căn lề).
+            </>
+          }
         />
       </Card>
 

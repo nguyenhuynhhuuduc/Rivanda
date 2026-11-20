@@ -3,9 +3,11 @@ import { pool } from "./db";
 import { listTrips } from "./discovery";
 import { safeMapsUrl, type JourneyPreview } from "./journeystory-view";
 
-export async function journeyCollections(): Promise<JourneyPreview[]> {
-  // Keep the public visibility rule of the existing journey listing.
-  const trips = await listTrips({ onlyWithPhotos: true });
+export async function journeyCollections({ includeEmpty = false }: { includeEmpty?: boolean } = {}): Promise<JourneyPreview[]> {
+  // Trip metadata is already public via getTripBySlug (trips has no draft/private flag).
+  // Home keeps those trips visible with a default cover; the library keeps its current filter.
+  // listTrips still selects cover files/counts from published photos only.
+  const trips = await listTrips({ onlyWithPhotos: !includeEmpty });
   if (!trips.length) return [];
   const [rows] = await pool.query<RowDataPacket[]>("SELECT id, created_at FROM trips WHERE id IN (?)", [trips.map(t => t.id)]);
   const dates = new Map(rows.map(r => { const date = r.created_at ? new Date(r.created_at) : null; return [r.id as string, date && Number.isFinite(date.getTime()) ? date.toISOString() : null]; }));
