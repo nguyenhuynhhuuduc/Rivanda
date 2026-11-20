@@ -3,7 +3,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSession, destroySession, getCurrentUser } from "@/lib/auth";
-import { markOffline } from "@/lib/discovery-community/presence";
 import { consumeResetToken, requestPasswordReset } from "@/lib/password-reset";
 import { dummyVerify, hashPassword, verifyPassword } from "@/lib/password";
 import { clearAttempts, isBlocked, recordFailure } from "@/lib/ratelimit";
@@ -73,7 +72,10 @@ export async function registerAction(_prev: AuthState, fd: FormData): Promise<Au
 export async function logoutAction() {
   const current = await getCurrentUser().catch(() => null);
   if (current) {
-    try { markOffline(current.id); } catch { /* không chặn đăng xuất */ }
+    try {
+      const { markOffline } = await import("@/lib/discovery-community/presence");
+      markOffline(current.id);
+    } catch { /* không chặn đăng xuất */ }
   }
   await destroySession();
   redirect("/");

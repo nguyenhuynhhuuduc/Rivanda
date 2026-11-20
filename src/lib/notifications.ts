@@ -60,6 +60,25 @@ export async function notify(userId:string,type:string,message:string,link?:stri
   try{await pool.query('INSERT INTO notifications(id,user_id,type,message,link) VALUES(?,?,?,?,?)',[randomUUID(),userId,type,message.slice(0,300),link??null]);}
   catch{console.error('Không tạo được thông báo.');}
 }
+// Tái sử dụng bảng notifications hiện có cho tin nhắn mới; gộp theo hội thoại chưa đọc để tránh spam thông báo.
+export async function notifyChatMessage(recipientId:string,senderName:string,preview:string,conversationId:string):Promise<void>{
+  const link=`/messages?c=${conversationId}`;
+  const snippet=preview.trim()?preview.trim().slice(0,110):'đã gửi một hình ảnh.';
+  const message=`${senderName}: ${snippet}`.slice(0,300);
+  try{
+    const [existing]=await pool.query<RowDataPacket[]>("SELECT id FROM notifications WHERE user_id=? AND type='message' AND link=? AND is_read=0 ORDER BY created_at DESC LIMIT 1",[recipientId,link]);
+    if(existing[0]?.id){
+      await pool.query('UPDATE notifications SET message=?,created_at=NOW() WHERE id=?',[message,existing[0].id]);
+    }else{
+      await pool.query('INSERT INTO notifications(id,user_id,type,message,link) VALUES(?,?,?,?,?)',[randomUUID(),recipientId,'message',message,link]);
+    }
+  }catch{console.error('Không tạo được thông báo tin nhắn.');}
+}
+export async function markChatNotificationRead(userId:string,conversationId:string):Promise<void>{
+  try{
+    await pool.query("UPDATE notifications SET is_read=1 WHERE user_id=? AND type='message' AND link=? AND is_read=0",[userId,`/messages?c=${conversationId}`]);
+  }catch{/* bỏ qua nếu không cập nhật được */}
+}
 async function active(userId:string){idOf(userId);const[users]=await pool.query<RowDataPacket[]>('SELECT id FROM users WHERE id=? AND is_active=1',[userId]);if(!users.length)throw new CommunityError('Tài khoản không khả dụng.');}
 function mapNotification(r:RowDataPacket):Notification{
   const kind=String(r.type).replace('discovery_',''),name=[r.last_name,r.first_name].filter(Boolean).join(' ')||'Thành viên';

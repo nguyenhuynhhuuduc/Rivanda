@@ -167,11 +167,18 @@
   padding: .48rem .55rem;
   border-radius: .85rem;
   min-width: 0;
+  cursor: pointer;
   transition: background-color .15s ease;
 }
 
 .row:hover {
   background: var(--card);
+}
+
+.row:hover .chatBtn {
+  border-color: color-mix(in srgb, var(--color-gold) 45%, var(--line));
+  background: color-mix(in srgb, var(--color-gold) 12%, var(--surface));
+  color: var(--link);
 }
 
 .avatarBtn {
@@ -210,7 +217,9 @@
 }
 
 .nameLink {
-  display: block;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
   font-size: .83rem;
   font-weight: 600;
   color: var(--fg);

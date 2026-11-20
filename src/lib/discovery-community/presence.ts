@@ -1,6 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 import { pool } from "../db";
 import { displayName } from "../users";
+import { hasActiveStream, publishToUsers } from "../chat/realtime";
 import { idOf } from "./model";
 
 export const ONLINE_TTL_MS = 75_000; // Hết hạn sau 75 giây không có heartbeat (heartbeat 30s)
@@ -40,14 +41,21 @@ function pruneOldEntries(now: number): void {
 export function recordHeartbeat(userId: string, now = Date.now()): number {
   const normalized = idOf(userId).toLowerCase();
   pruneOldEntries(now);
+  const prev = store().get(normalized);
+  const wasOnline = !!prev && !prev.offline && now - prev.lastSeen <= ONLINE_TTL_MS;
   store().set(normalized, { lastSeen: now, offline: false });
+  if (!wasOnline) {
+    void broadcastPresenceToMutuals(normalized, "online", now);
+  }
   return now;
 }
 
 export function markOffline(userId: string, now = Date.now()): void {
   const normalized = idOf(userId).toLowerCase();
   const prev = store().get(normalized);
-  store().set(normalized, { lastSeen: prev?.lastSeen ?? now, offline: true });
+  const lastSeen = prev?.lastSeen ?? now;
+  store().set(normalized, { lastSeen, offline: true });
+  void broadcastPresenceToMutuals(normalized, "offline", lastSeen);
 }
 
 export function getPresenceStatus(
@@ -56,9 +64,51 @@ export function getPresenceStatus(
 ): { online: boolean; lastSeenAt: number | null } {
   const normalized = idOf(userId).toLowerCase();
   const entry = store().get(normalized);
+  if (hasActiveStream(normalized)) {
+    return { online: true, lastSeenAt: entry?.lastSeen ?? now };
+  }
   if (!entry) return { online: false, lastSeenAt: null };
   const online = !entry.offline && now - entry.lastSeen <= ONLINE_TTL_MS;
   return { online, lastSeenAt: entry.lastSeen };
+}
+
+export async function listMutualFriendIds(userId: string): Promise<string[]> {
+  const viewer = idOf(userId);
+  const [rows] = await pool.query<RowDataPacket[]>(
+    `SELECT u.id
+       FROM follows f1
+       JOIN follows f2
+         ON f2.follower_id = f1.followed_id
+        AND f2.followed_id = f1.follower_id
+       JOIN users u
+         ON u.id = f1.followed_id
+        AND u.is_active = 1
+      WHERE f1.follower_id = ?
+        AND u.id <> ?
+      LIMIT 200`,
+    [viewer, viewer],
+  );
+  return rows.map((r) => String(r.id));
+}
+
+export async function broadcastPresenceToMutuals(
+  userId: string,
+  status: "online" | "offline",
+  timestampMs = Date.now(),
+): Promise<void> {
+  try {
+    const friends = await listMutualFriendIds(userId);
+    if (!friends.length) return;
+    const iso = new Date(timestampMs).toISOString();
+    publishToUsers(
+      friends,
+      status === "online"
+        ? { type: "presence:online", userId: userId.toLowerCase(), lastSeenAt: iso }
+        : { type: "presence:offline", userId: userId.toLowerCase(), lastSeenAt: iso },
+    );
+  } catch {
+    // Không chặn luồng chính nếu phát sự kiện presence gặp lỗi tạm thời
+  }
 }
 
 export type MutualPresenceUser = {

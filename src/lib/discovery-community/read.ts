@@ -1,7 +1,7 @@
 import type { RowDataPacket } from "mysql2";
 import { pool } from "../db";
 import { CommunityError, idOf, textOf, type Actor, type Post, type Topic } from "./model";
-import { followedMembers } from "../community";
+import { followedMembers, followingMeMembers } from "../community";
 import { communityReady, requireCommunity } from "./schema";
 import { decodeCursor, encodeCursor, feedScope, type FeedOrder, type Cursor } from "./cursor";
 import { VISIBLE_COMMENTS } from "./interactions";
@@ -24,8 +24,9 @@ async function hydrate(rows: RowDataPacket[], viewer?:string|null): Promise<Post
     pool.query<RowDataPacket[]>("SELECT id,post_id,width,height FROM community_media WHERE removed_at IS NULL AND post_id IN (?) ORDER BY sort_order,id",[ids]),
     pool.query<RowDataPacket[]>("SELECT pt.post_id,t.name FROM community_post_tags pt JOIN tags t ON t.id=pt.tag_id WHERE pt.post_id IN (?) ORDER BY t.name",[ids]),
   ]);
-  const followed=viewer?await followedMembers(viewer,[...new Set(rows.map(r=>r.author_id as string))]):new Set<string>();
-  return rows.map(r=>({ id:r.id,authorId:r.author_id,authorName:[r.last_name,r.first_name].filter(Boolean).join(" ") || "Thành viên",avatar:r.avatar_url,following:followed.has(r.author_id),
+  const authorIds = [...new Set(rows.map(r=>r.author_id as string))];
+  const [followed, followedBy] = viewer ? await Promise.all([followedMembers(viewer, authorIds), followingMeMembers(viewer, authorIds)]) : [new Set<string>(), new Set<string>()];
+  return rows.map(r=>({ id:r.id,authorId:r.author_id,authorName:[r.last_name,r.first_name].filter(Boolean).join(" ") || "Thành viên",avatar:r.avatar_url,following:followed.has(r.author_id),followsViewer:followedBy.has(r.author_id),
     topic:r.topic_id?{id:r.topic_id,name:r.topic_name,slug:r.topic_slug}:null,kind:r.kind,title:r.title,body:r.body,visibility:r.visibility,status:r.status,revision:Number(r.revision),createdAt:r.created_at,publishedAt:r.published_at,timeKey:r.time_key,
     likes:Number(r.likes),comments:Number(r.comments),saves:Number(r.saves),liked:!!r.liked,saved:!!r.saved,reviewNote:r.review_note,
     media:media.filter(m=>m.post_id===r.id).map(m=>({id:m.id,width:m.width,height:m.height})),tags:tags.filter(t=>t.post_id===r.id).map(t=>t.name) }));

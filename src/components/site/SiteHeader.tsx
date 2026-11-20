@@ -2,6 +2,7 @@ import { NotificationBell } from "@/components/discovery-community/NotificationB
 import Link from "next/link";
 import { LogoutForm } from "@/components/auth/LogoutForm";
 import { getCurrentUser } from "@/lib/auth";
+import { totalUnreadMessages } from "@/lib/chat/store";
 import { unreadCount } from "@/lib/notifications";
 import { can } from "@/lib/permissions";
 import { getHomeSettings } from "@/lib/settings";
@@ -9,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { SiteLogo } from "@/components/SiteLogo";
 import { NavbarSearch } from "@/components/site/NavbarSearch";
 import { PresenceHeartbeat } from "@/components/site/PresenceHeartbeat";
+import { MessageNavIcon } from "@/components/messages/MessageNavIcon";
 
 export const NAV = [
   { href: "/journeystory", label: "JourneyStory" },
@@ -23,7 +25,9 @@ const link = "whitespace-nowrap text-sm text-muted transition hover:text-fg";
 
 export async function SiteHeader() {
   const [s, user] = await Promise.all([getHomeSettings(), getCurrentUser()]);
-  const unread = user ? await unreadCount(user.id) : 0;
+  const [unread, unreadMessages] = user
+    ? await Promise.all([unreadCount(user.id), totalUnreadMessages(user.id)])
+    : [0, 0];
   const staff = !!user && can(user.role, "admin.access");
 
   return (
@@ -38,6 +42,7 @@ export async function SiteHeader() {
         <div className="ml-auto flex shrink-0 items-center gap-3 xl:ml-0">
         <ThemeToggle />
         {user&&<PresenceHeartbeat userId={user.id}/>}
+        {user&&<MessageNavIcon key={`msg-${user.id}`} userId={user.id} initialUnread={unreadMessages}/>}
         {user&&<NotificationBell key={user.id} userId={user.id} unread={unread}/>}
         <NavbarSearch />
         <div className="hidden shrink-0 items-center gap-4 xl:flex">
@@ -69,6 +74,7 @@ export async function SiteHeader() {
             {user ? (
               <>
                 <Link href="/account" className="block rounded-md px-3 py-2.5 text-sm hover:bg-card">Tài khoản</Link>
+                <Link href="/messages" className="block rounded-md px-3 py-2.5 text-sm hover:bg-card">Tin nhắn{unreadMessages ? ` (${unreadMessages})` : ""}</Link>
                 <Link href="/account/notifications" className="block rounded-md px-3 py-2.5 text-sm hover:bg-card">Thông báo{unread ? ` (${unread})` : ""}</Link>
                 {staff && <Link href="/admin" className="block rounded-md px-3 py-2.5 text-sm hover:bg-card">Quản trị</Link>}
                 <LogoutForm><button className="block w-full rounded-md px-3 py-2.5 text-left text-sm hover:bg-card">Đăng xuất</button></LogoutForm>

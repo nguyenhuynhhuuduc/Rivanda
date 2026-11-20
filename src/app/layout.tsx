@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { DM_Serif_Display, Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
+import { getCurrentUser } from "@/lib/auth";
 import { getHomeSettings } from "@/lib/settings";
 import { appUrl } from "@/lib/oauth";
+import { MiniChatProvider } from "@/components/messages/MiniChatProvider";
 import logo from "../../picture-title/logo-web.jpg";
 import "./globals.css";
 
@@ -24,11 +26,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser().catch(() => null);
   return (
     <html lang="vi" suppressHydrationWarning className={`${inter.variable} ${playfair.variable} ${dmSerif.variable} ${mono.variable}`}>
       <head><script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('personal-site-theme');document.documentElement.dataset.theme=t==='light'||t==='dark'?t:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}})()` }} /></head>
-      <body><a href="#main-content" className="skip-link">Đến nội dung chính</a>{children}</body>
+      <body>
+        <a href="#main-content" className="skip-link">Đến nội dung chính</a>
+        <MiniChatProvider currentUserId={user?.id ?? null}>{children}</MiniChatProvider>
+      </body>
     </html>
   );
 }

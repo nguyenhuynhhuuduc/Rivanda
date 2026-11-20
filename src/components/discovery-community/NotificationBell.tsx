@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar } from "@/components/ui/kit";
+import { subscribeChatEvents } from "@/components/messages/realtime-client";
 import { readNotificationAction } from "@/app/(light)/account/notifications/actions";
 import styles from "./NotificationBell.module.css";
 
@@ -55,6 +56,7 @@ function formatExactTime(iso: string): string {
 
 function sourceLabel(item: DropdownNotification): string {
   if (item.actorName) return item.actorName;
+  if (item.type === "message") return "Tin nhắn mới";
   if (item.type === "moderation") return "Kiểm duyệt Rivanda";
   if (item.type.includes("follow")) return "Kết nối thành viên";
   if (item.type.includes("comment") || item.type.includes("reply")) return "Bình luận";
@@ -62,6 +64,14 @@ function sourceLabel(item: DropdownNotification): string {
 }
 
 function TypeGlyph({ type, size = 14 }: { type: string; size?: number }) {
+  if (type === "message") {
+    return (
+      <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M5 17.5 3.5 21l3.9-1.2A8.5 8.5 0 1 0 5 17.5Z" />
+        <path d="M9 11.5h.01M12 11.5h.01M15 11.5h.01" strokeWidth="2.4" />
+      </svg>
+    );
+  }
   if (type.includes("like")) {
     return (
       <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" aria-hidden="true">
@@ -133,6 +143,39 @@ export function NotificationBell({ unread, userId }: { unread: number; userId?: 
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
+
+  // Đồng bộ badge thông báo ngay lập tức khi có tin nhắn mới hoặc đã đọc tin nhắn qua kênh realtime
+  useEffect(() => {
+    if (!userId) return;
+    let stopped = false;
+    const syncBell = async () => {
+      try {
+        const res = await fetch("/api/discovery/notifications/unread", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { unread?: unknown };
+        if (!stopped && Number.isSafeInteger(data.unread) && (data.unread as number) >= 0) {
+          setCount(data.unread as number);
+        }
+      } catch {
+        // Bỏ qua lỗi mạng tạm thời
+      }
+    };
+    const unsub = subscribeChatEvents((event) => {
+      if (
+        (event.type === "message:new" && event.message.senderId !== userId) ||
+        (event.type === "message:read" && event.byUserId === userId)
+      ) {
+        void syncBell();
+      }
+    });
+    return () => {
+      stopped = true;
+      unsub();
+    };
+  }, [userId]);
 
   // Polling số lượng chưa đọc định kỳ (giữ nguyên cơ chế hiện tại)
   useEffect(() => {

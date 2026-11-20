@@ -104,6 +104,12 @@ export async function followedMembers(viewerId: string, ids: string[]): Promise<
   return new Set(rows.map(r=>r.followed_id as string));
 }
 
+export async function followingMeMembers(viewerId: string, ids: string[]): Promise<Set<string>> {
+  idOf(viewerId); if (!ids.length) return new Set();
+  const [rows] = await pool.query<RowDataPacket[]>("SELECT follower_id FROM follows WHERE followed_id=? AND follower_id IN (?)", [viewerId, ids.map(idOf)]);
+  return new Set(rows.map(r=>r.follower_id as string));
+}
+
 export async function followPage(userId:string, direction:"followers"|"following", viewerId:string|null, token?:string) {
   idOf(userId); if(viewerId) idOf(viewerId);
   if(!["followers","following"].includes(direction)) throw new CommunityError("Danh sách không hợp lệ.");
@@ -112,8 +118,10 @@ export async function followPage(userId:string, direction:"followers"|"following
   const base:Cursor=cursor??{v:1,order:"newest",scope,at:now.t,expires:Date.now()+30*60000};
   const member=direction==="followers"?"f.follower_id":"f.followed_id", owner=direction==="followers"?"f.followed_id":"f.follower_id";
   const [rows]=await pool.query<RowDataPacket[]>(`SELECT u.id,u.first_name,u.last_name,u.avatar_url,DATE_FORMAT(f.created_at,'%Y-%m-%d %H:%i:%s.%f') AS time_key FROM follows f JOIN users u ON u.id=${member} AND u.is_active=1 JOIN users owner ON owner.id=${owner} AND owner.is_active=1 WHERE ${owner}=? AND f.created_at<=? ${cursor?"AND (f.created_at<? OR (f.created_at=? AND u.id<?))":""} ORDER BY f.created_at DESC,u.id DESC LIMIT 21`,[userId,base.at,...(cursor?[cursor.lastTime,cursor.lastTime,cursor.lastId]:[])]);
-  const page=rows.slice(0,20), followed=viewerId?await followedMembers(viewerId,page.map(r=>r.id)):new Set<string>(), last=page.at(-1);
-  return {members:page.map(r=>({id:r.id as string,name:[r.last_name,r.first_name].filter(Boolean).join(" ")||"Thành viên",avatar:r.avatar_url as string|null,following:followed.has(r.id)})),next:rows.length>20&&last?encodeCursor({...base,lastTime:last.time_key,lastId:last.id}):null};
+  const page=rows.slice(0,20), ids=page.map(r=>r.id as string);
+  const [followed, followedBy] = viewerId ? await Promise.all([followedMembers(viewerId, ids), followingMeMembers(viewerId, ids)]) : [new Set<string>(), new Set<string>()];
+  const last=page.at(-1);
+  return {members:page.map(r=>({id:r.id as string,name:[r.last_name,r.first_name].filter(Boolean).join(" ")||"Thành viên",avatar:r.avatar_url as string|null,following:followed.has(r.id),followsViewer:followedBy.has(r.id)})),next:rows.length>20&&last?encodeCursor({...base,lastTime:last.time_key,lastId:last.id}):null};
 }
 
 // ===== Báo cáo vi phạm =====

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/kit";
+import { subscribeChatEvents } from "@/components/messages/realtime-client";
+import { useMiniChat } from "@/components/messages/MiniChatProvider";
 import type { MutualPresenceList, MutualPresenceUser } from "@/lib/discovery-community/presence";
 import styles from "./OnlineFriendsPanel.module.css";
 
@@ -45,16 +47,48 @@ export function OnlineFriendsPanel({
   loggedIn: boolean;
   loginHref: string;
   initialData: MutualPresenceList | null;
-  /** Điểm tích hợp sẵn cho giai đoạn triển khai nhắn tin trực tiếp sau này */
   onSelectForChat?: (friend: MutualPresenceUser) => void;
 }) {
+  const miniChat = useMiniChat();
   const [data, setData] = useState<MutualPresenceList | null>(initialData);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [chatNotice, setChatNotice] = useState<string>("");
+  const openingId = miniChat?.openingPeerId ?? null;
 
   useEffect(() => {
     setData(initialData);
   }, [initialData]);
+
+  // Đồng bộ presence online/offline thời gian thực qua kênh SSE dùng chung
+  useEffect(() => {
+    if (!loggedIn) return;
+    const unsub = subscribeChatEvents((event) => {
+      if (event.type !== "presence:online" && event.type !== "presence:offline") return;
+      const online = event.type === "presence:online";
+      const target = event.userId.toLowerCase();
+      setData((prev) => {
+        if (!prev) return prev;
+        let touched = false;
+        const nextUsers = prev.users.map((u) => {
+          if (u.id.toLowerCase() !== target) return u;
+          if (u.online === online && u.lastSeenAt === event.lastSeenAt) return u;
+          touched = true;
+          return { ...u, online, lastSeenAt: event.lastSeenAt };
+        });
+        if (!touched) return prev;
+        nextUsers.sort((a, b) => {
+          if (a.online !== b.online) return a.online ? -1 : 1;
+          return a.displayName.localeCompare(b.displayName, "vi");
+        });
+        return {
+          ...prev,
+          users: nextUsers,
+          onlineCount: nextUsers.reduce((acc, u) => acc + (u.online ? 1 : 0), 0),
+        };
+      });
+    });
+    return unsub;
+  }, [loggedIn]);
 
   // Làm mới trạng thái online/offline theo nhịp thực tế khi tab đang hiển thị
   useEffect(() => {
@@ -77,7 +111,24 @@ export function OnlineFriendsPanel({
         if (!res.ok) return;
         const json = (await res.json()) as MutualPresenceList;
         if (!stopped && Array.isArray(json.users)) {
-          setData(json);
+          setData((prev) => {
+            if (
+              prev &&
+              prev.onlineCount === json.onlineCount &&
+              prev.totalCount === json.totalCount &&
+              prev.users.length === json.users.length &&
+              prev.users.every(
+                (u, idx) =>
+                  u.id === json.users[idx]?.id &&
+                  u.online === json.users[idx]?.online &&
+                  u.displayName === json.users[idx]?.displayName &&
+                  u.avatarUrl === json.users[idx]?.avatarUrl,
+              )
+            ) {
+              return prev;
+            }
+            return json;
+          });
         }
       } catch {
         // Giữ nguyên danh sách gần nhất khi mạng gián đoạn tạm thời
@@ -104,14 +155,20 @@ export function OnlineFriendsPanel({
     };
   }, [loggedIn]);
 
-  function handleChatIntent(friend: MutualPresenceUser) {
+  async function handleChatIntent(friend: MutualPresenceUser) {
     if (onSelectForChat) {
       onSelectForChat(friend);
       return;
     }
-    setChatNotice(
-      `Điểm mở trò chuyện với ${friend.displayName} đã sẵn sàng — tính năng nhắn tin trực tiếp sẽ được kích hoạt ở giai đoạn tiếp theo.`,
-    );
+    if (!miniChat) {
+      setChatNotice("Chưa sẵn sàng mở Mini Chat. Hãy tải lại trang.");
+      return;
+    }
+    setChatNotice("");
+    const result = await miniChat.openWithPeer(friend);
+    if (!result.ok && result.error) {
+      setChatNotice(result.error);
+    }
   }
 
   const users = data?.users ?? [];
@@ -120,13 +177,23 @@ export function OnlineFriendsPanel({
   const onlineCount = data?.onlineCount ?? onlineUsers.length;
 
   const renderFriendRow = (friend: MutualPresenceUser) => (
-    <li key={friend.id} className={styles.row} data-chat-user-id={friend.id} data-presence={friend.online ? "online" : "offline"}>
+    <li
+      key={friend.id}
+      className={styles.row}
+      data-chat-user-id={friend.id}
+      data-presence={friend.online ? "online" : "offline"}
+      onClick={() => void handleChatIntent(friend)}
+    >
       <button
         type="button"
-        onClick={() => handleChatIntent(friend)}
+        disabled={openingId === friend.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          void handleChatIntent(friend);
+        }}
         className={styles.avatarBtn}
-        aria-label={`${friend.displayName} (${friend.online ? "Đang hoạt động" : "Ngoại tuyến"}) — mở trò chuyện khi tính năng nhắn tin sẵn sàng`}
-        title={friend.online ? `Đang hoạt động · Chuẩn bị nhắn tin với ${friend.displayName}` : `${friend.displayName} · Ngoại tuyến`}
+        aria-label={`Mở Mini Chat với ${friend.displayName} (${friend.online ? "Đang hoạt động" : "Ngoại tuyến"})`}
+        title={`Nhấn để mở Mini Chat với ${friend.displayName}`}
       >
         <Avatar name={friend.displayName} url={friend.avatarUrl} size={36} />
         <span
@@ -136,20 +203,34 @@ export function OnlineFriendsPanel({
       </button>
 
       <div className={styles.info}>
-        <Link href={friend.profileUrl} className={styles.nameLink}>
+        {/* CHỈ nhấn tên người dùng mới điều hướng sang trang cá nhân; chặn nổi bọt để không mở Mini Chat */}
+        <Link
+          href={friend.profileUrl}
+          onClick={(e) => e.stopPropagation()}
+          className={styles.nameLink}
+          title={`Xem trang cá nhân của ${friend.displayName}`}
+        >
           {friend.displayName}
         </Link>
         <span className={`${styles.statusText} ${friend.online ? styles.statusTextOnline : ""}`}>
-          {friend.online ? "Đang hoạt động" : formatLastSeen(friend.lastSeenAt)}
+          {openingId === friend.id
+            ? "Đang mở Mini Chat…"
+            : friend.online
+              ? "Đang hoạt động"
+              : formatLastSeen(friend.lastSeenAt)}
         </span>
       </div>
 
       <button
         type="button"
-        onClick={() => handleChatIntent(friend)}
+        disabled={openingId === friend.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          void handleChatIntent(friend);
+        }}
         className={styles.chatBtn}
         aria-label={`Nhắn tin với ${friend.displayName}`}
-        title={`Nhắn tin với ${friend.displayName}`}
+        title={`Mở Mini Chat với ${friend.displayName}`}
       >
         <ChatBubbleIcon />
       </button>
@@ -157,7 +238,7 @@ export function OnlineFriendsPanel({
   );
 
   return (
-    <section className={styles.card} aria-label="Người dùng đang hoạt động">
+    <section className={styles.card} aria-label="Bạn bè đang hoạt động">
       {/* Header thu gọn cho mobile/tablet (< 1100px) */}
       <button
         type="button"
@@ -187,9 +268,9 @@ export function OnlineFriendsPanel({
               aria-hidden="true"
               className={`${styles.liveDot} ${onlineCount === 0 ? styles.liveDotIdle : ""}`}
             />
-            <h2 className={styles.title}>Người dùng đang hoạt động</h2>
+            <h2 className={styles.title}>Bạn bè đang hoạt động</h2>
           </div>
-          <p className={styles.subtitle}>Bạn bè có quan hệ follow hai chiều</p>
+          <p className={styles.subtitle}></p>
         </div>
         {loggedIn && (
           <span className={styles.countPill} aria-live="polite">
@@ -214,7 +295,7 @@ export function OnlineFriendsPanel({
             </span>
             <p className={styles.emptyTitle}>Kết nối với bạn bè trực tuyến</p>
             <p className={styles.emptyText}>
-              Đăng nhập để xem những bạn bè follow hai chiều đang hoạt động trên Rivanda.
+              Đăng nhập để xem những bạn bè đang hoạt động trên Rivanda.
             </p>
             <Link href={loginHref} className={styles.emptyAction}>
               Đăng nhập ngay →
@@ -229,7 +310,7 @@ export function OnlineFriendsPanel({
                 <path d="M17 8v6M14 11h6" />
               </svg>
             </span>
-            <p className={styles.emptyTitle}>Chưa có bạn bè follow hai chiều</p>
+            <p className={styles.emptyTitle}>Chưa có bạn bè</p>
             <p className={styles.emptyText}>
               Danh sách chỉ hiển thị thành viên khi cả hai cùng theo dõi nhau. Hãy khám phá và kết nối thêm thành viên mới.
             </p>
